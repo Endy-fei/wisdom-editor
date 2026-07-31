@@ -1,5 +1,7 @@
-.superpowers/
 node_modules/
-out/
 dist/
+webview/node_modules/
+webview/dist/
+.superpowers/
 *.vsix
+.vscode-test/

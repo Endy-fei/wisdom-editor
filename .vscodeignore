@@ -1,0 +1,14 @@
+.vscode/**
+.superpowers/**
+src/**
+webview/src/**
+webview/node_modules/**
+webview/vite.config.ts
+**/*.ts
+**/tsconfig*.json
+**/*.map
+docs/**
+samples/**
+node_modules/**
+esbuild.js
+vitest.config.ts
