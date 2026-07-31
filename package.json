@@ -21,6 +21,10 @@
       {
         "command": "wisdom.openAsText",
         "title": "Wisdom: 以文本方式打开"
+      },
+      {
+        "command": "wisdom.writeBackFromJson",
+        "title": "Wisdom: 从 JSON 写回 .wisdom"
       }
     ],
     "menus": {
