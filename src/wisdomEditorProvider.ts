@@ -40,8 +40,7 @@ export class WisdomEditorProvider implements vscode.CustomEditorProvider<WisdomD
     };
 
     const updateWebviewHtml = () => {
-      // Task 5 完成后改为加载 dist/webview/index.html
-      webviewPanel.webview.html = this.getPlaceholderHtml(document);
+      webviewPanel.webview.html = this.getReactHtml(webviewPanel.webview);
     };
     updateWebviewHtml();
 
@@ -113,13 +112,26 @@ export class WisdomEditorProvider implements vscode.CustomEditorProvider<WisdomD
     };
   }
 
-  private getPlaceholderHtml(document: WisdomDocument): string {
-    const name = document.uri.fsPath;
-    return `<!DOCTYPE html><html><body style="background:#1e1e1e;color:#ccc;font-family:sans-serif;padding:16px">
-      <h2>Wisdom Editor</h2>
-      <p>${name}</p>
-      <p>电表数量: ${document.data.MeterInfoList.length}</p>
-      <p>React Webview 将在下一任务接入</p>
-    </body></html>`;
+  private getReactHtml(webview: vscode.Webview): string {
+    const base = vscode.Uri.joinPath(this.context.extensionUri, "dist", "webview");
+    const scriptUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(base, "assets", "index.js")
+    );
+    const styleUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(base, "assets", "index.css")
+    );
+    const csp = `default-src 'none'; img-src ${webview.cspSource} https:; script-src ${webview.cspSource}; style-src ${webview.cspSource} 'unsafe-inline';`;
+    return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="${csp}" />
+  <link rel="stylesheet" href="${styleUri}" />
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="${scriptUri}"></script>
+</body>
+</html>`;
   }
 }
