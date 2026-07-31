@@ -21,8 +21,10 @@ function buildTemplates(): WisdomTemplates {
 }
 
 export class WisdomEditorProvider implements vscode.CustomEditorProvider<WisdomDocument> {
-  private readonly _onDidChangeCustomDocument =
-    new vscode.EventEmitter<vscode.CustomDocumentEditEvent<WisdomDocument>>();
+  private readonly _onDidChangeCustomDocument = new vscode.EventEmitter<
+    | vscode.CustomDocumentEditEvent<WisdomDocument>
+    | vscode.CustomDocumentContentChangeEvent<WisdomDocument>
+  >();
   readonly onDidChangeCustomDocument = this._onDidChangeCustomDocument.event;
 
   /** document URI → active webview panel */
@@ -40,10 +42,13 @@ export class WisdomEditorProvider implements vscode.CustomEditorProvider<WisdomD
 
   async openCustomDocument(
     uri: vscode.Uri,
-    _openContext: vscode.CustomDocumentOpenContext,
+    openContext: vscode.CustomDocumentOpenContext,
     _token: vscode.CancellationToken
   ): Promise<WisdomDocument> {
-    return WisdomDocument.create(uri);
+    const backupUri = openContext.backupId
+      ? vscode.Uri.parse(openContext.backupId)
+      : undefined;
+    return WisdomDocument.create(uri, backupUri);
   }
 
   async resolveCustomEditor(
@@ -67,11 +72,7 @@ export class WisdomEditorProvider implements vscode.CustomEditorProvider<WisdomD
     updateWebviewHtml();
 
     const changeSub = document.onDidChangeContent(() => {
-      this._onDidChangeCustomDocument.fire({
-        document,
-        undo: () => undefined,
-        redo: () => undefined,
-      });
+      this._onDidChangeCustomDocument.fire({ document });
     });
 
     webviewPanel.webview.onDidReceiveMessage((raw: WebviewToHost) => {
@@ -124,7 +125,7 @@ export class WisdomEditorProvider implements vscode.CustomEditorProvider<WisdomD
     _cancellation: vscode.CancellationToken
   ): Promise<void> {
     const fresh = await WisdomDocument.create(document.uri);
-    document.replaceData(fresh.data, "Revert");
+    document.replaceData(fresh.data, "Revert", false);
     const panel = this.panels.get(document.uri.toString());
     if (panel) {
       const msg: HostToWebview = {

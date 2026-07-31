@@ -25,9 +25,13 @@ export class WisdomDocument implements vscode.CustomDocument {
     this._warnings = warnings;
   }
 
-  static async create(uri: vscode.Uri): Promise<WisdomDocument> {
+  static async create(
+    uri: vscode.Uri,
+    backupUri?: vscode.Uri
+  ): Promise<WisdomDocument> {
+    const readUri = backupUri ?? uri;
     try {
-      const bytes = await vscode.workspace.fs.readFile(uri);
+      const bytes = await vscode.workspace.fs.readFile(readUri);
       const decoded = decodeWisdom(Buffer.from(bytes));
       const warnings: string[] = [];
       if (!Array.isArray(decoded.MeterInfoList)) {
@@ -53,10 +57,16 @@ export class WisdomDocument implements vscode.CustomDocument {
     return this._dirty;
   }
 
-  replaceData(data: WisdomRoot, label = "Edit"): void {
+  replaceData(
+    data: WisdomRoot,
+    label = "Edit",
+    markDirty = true
+  ): void {
     this._data = data;
-    this._dirty = true;
-    this._onDidChange.fire({ label });
+    this._dirty = markDirty;
+    if (markDirty) {
+      this._onDidChange.fire({ label });
+    }
   }
 
   async save(): Promise<void> {

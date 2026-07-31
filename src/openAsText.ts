@@ -78,8 +78,14 @@ export async function writeBackFromJson(): Promise<void> {
   }
 
   try {
-    const obj = JSON.parse(editor.document.getText());
-    await vscode.workspace.fs.writeFile(wisdomUri, encodeWisdom(obj));
+    const obj = JSON.parse(editor.document.getText()) as unknown;
+    if (obj === null || typeof obj !== "object" || Array.isArray(obj)) {
+      throw new Error("Wisdom JSON root must be an object");
+    }
+    await vscode.workspace.fs.writeFile(
+      wisdomUri,
+      encodeWisdom(obj as Record<string, unknown>)
+    );
     tmpToWisdom.delete(tmpPath);
     void vscode.window.showInformationMessage(
       `已写回 ${wisdomUri.fsPath}。若可视化编辑器仍打开，请关闭后重新打开以加载最新内容。`
