@@ -25,21 +25,50 @@ function rowsToCert(rows: CertRow[]): Record<string, string> {
   return CertificateCode;
 }
 
+function mergeMappedWithDrafts(
+  cert: Record<string, string> | undefined,
+  prev: CertRow[]
+): CertRow[] {
+  const mapped = certToRows(cert);
+  const drafts = prev.filter((row) => !row.key.trim());
+  return [...mapped, ...drafts];
+}
+
 export function MetaTab({ data, onChange }: Props) {
   const [rows, setRows] = useState<CertRow[]>(() => certToRows(data.CertificateCode));
 
   useEffect(() => {
-    setRows(certToRows(data.CertificateCode));
+    setRows((prev) => mergeMappedWithDrafts(data.CertificateCode, prev));
   }, [data.CertificateCode]);
 
-  const pushCert = (nextRows: CertRow[]) => {
+  const commitRows = (nextRows: CertRow[]) => {
     setRows(nextRows);
     onChange({ ...data, CertificateCode: rowsToCert(nextRows) });
   };
 
   const updateRow = (index: number, field: "key" | "value", raw: string) => {
     const next = rows.map((r, i) => (i === index ? { ...r, [field]: raw } : r));
-    pushCert(next);
+    const row = next[index];
+    const hasKey = Boolean(row.key.trim());
+
+    // Draft rows (empty key): keep local only until a key is entered.
+    if (!hasKey) {
+      setRows(next);
+      return;
+    }
+
+    commitRows(next);
+  };
+
+  const deleteRow = (index: number) => {
+    const next = rows.filter((_, i) => i !== index);
+    const removed = rows[index];
+    // Deleting a draft never needs a host commit.
+    if (!removed.key.trim()) {
+      setRows(next);
+      return;
+    }
+    commitRows(next);
   };
 
   return (
@@ -133,7 +162,7 @@ export function MetaTab({ data, onChange }: Props) {
                     <button
                       type="button"
                       className="btn danger small"
-                      onClick={() => pushCert(rows.filter((_, i) => i !== index))}
+                      onClick={() => deleteRow(index)}
                     >
                       删除
                     </button>
