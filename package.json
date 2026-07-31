@@ -45,7 +45,7 @@
     "build:webview": "npm run build --prefix webview",
     "build": "npm run build:webview && npm run build:ext",
     "watch:ext": "node esbuild.js --watch",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "package": "npm run build && vsce package"
   },
