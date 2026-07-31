@@ -178,7 +178,9 @@ export function MeterTab({ data, templates, onChange }: Props) {
                 <span className="list-primary">
                   表位 {m.MeterSeat || "-"} · {m.MeterNo || "(无表号)"}
                 </span>
-                <span className="list-secondary">{m.Name || m.Factory || m.ID.slice(0, 8)}</span>
+                <span className="list-secondary">
+                  {String(m.Name || m.Factory || m.ID.slice(0, 8))}
+                </span>
               </button>
             </li>
           ))}

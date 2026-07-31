@@ -8,7 +8,7 @@
   "categories": ["Other"],
   "activationEvents": ["onCustomEditor:wisdom.editor"],
   "main": "./dist/extension.js",
-  "workspaces": ["packages/*", "webview"],
+  "workspaces": ["packages/*", "webview", "desktop"],
   "contributes": {
     "customEditors": [
       {
@@ -52,7 +52,9 @@
     "watch:ext": "node esbuild.js --watch",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
-    "package": "npm run build && vsce package"
+    "package": "npm run build && vsce package",
+    "desktop:dev": "npm run tauri dev -w wisdom-desktop",
+    "desktop:build": "npm run tauri build -w wisdom-desktop"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

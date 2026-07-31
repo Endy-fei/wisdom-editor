@@ -1,0 +1,99 @@
+:root {
+  color-scheme: dark;
+  --vscode-foreground: #cccccc;
+  --vscode-editor-background: #1e1e1e;
+  --vscode-sideBar-background: #252526;
+  --vscode-panel-border: #3c3c3c;
+  --vscode-widget-border: #3c3c3c;
+  --vscode-button-background: #0e639c;
+  --vscode-button-foreground: #ffffff;
+  --vscode-button-hoverBackground: #1177bb;
+  --vscode-button-secondaryBackground: #3a3d41;
+  --vscode-button-secondaryForeground: #cccccc;
+  --vscode-button-secondaryHoverBackground: #45494e;
+  --vscode-input-background: #3c3c3c;
+  --vscode-input-foreground: #cccccc;
+  --vscode-input-border: #3c3c3c;
+  --vscode-input-placeholderForeground: #989898;
+  --vscode-focusBorder: #007fd4;
+  --vscode-list-hoverBackground: #2a2d2e;
+  --vscode-list-activeSelectionBackground: #094771;
+  --vscode-list-activeSelectionForeground: #ffffff;
+  --vscode-badge-background: #4d4d4d;
+  --vscode-badge-foreground: #ffffff;
+  --vscode-font-family: "Segoe UI", Tahoma, sans-serif;
+  --vscode-font-size: 13px;
+  --vscode-descriptionForeground: #9d9d9d;
+  --vscode-errorForeground: #f48771;
+  --vscode-inputValidation-warningBackground: #352a05;
+  --vscode-inputValidation-warningForeground: #cccccc;
+  --vscode-inputValidation-warningBorder: #b89500;
+  --vscode-checkbox-background: #3c3c3c;
+  --vscode-checkbox-border: #3c3c3c;
+  --vscode-dropdown-background: #3c3c3c;
+  --vscode-dropdown-foreground: #cccccc;
+  --vscode-dropdown-border: #3c3c3c;
+  --vscode-textLink-foreground: #3794ff;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.desktop-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.desktop-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  background: #2d2d2d;
+  flex-shrink: 0;
+}
+
+.desktop-toolbar .btn {
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 2px;
+  padding: 4px 12px;
+  cursor: pointer;
+  color: var(--vscode-button-secondaryForeground);
+  background: var(--vscode-button-secondaryBackground);
+  font: inherit;
+}
+
+.desktop-toolbar .btn:hover:not(:disabled) {
+  background: var(--vscode-button-secondaryHoverBackground);
+}
+
+.desktop-toolbar .btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.desktop-toolbar-path {
+  margin-left: 8px;
+  color: var(--vscode-descriptionForeground);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.desktop-editor {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.desktop-editor .page {
+  height: 100%;
+}

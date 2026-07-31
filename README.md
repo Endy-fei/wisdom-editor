@@ -17,6 +17,18 @@ npm install
 npm run build
 ```
 
+### Windows 桌面版（Tauri）
+
+复用同一套 `@wisdom/editor-ui` / `@wisdom/core`，可独立打开与编辑 `.wisdom` 文件：
+
+```bash
+npm install
+npm run desktop:dev
+npm run desktop:build
+```
+
+开发时需已安装 Rust（`cargo`）与 WebView2。打包产物为 NSIS 安装包，并注册 `.wisdom` 文件关联。
+
 ### 用 F5 调试（重要）
 
 1. 在本仓库按 **F5**（或运行配置 `Run Extension`）
