@@ -59,8 +59,10 @@ export class TauriHost {
       },
       commit: (data) => {
         this.currentData = data;
+        const becameDirty = !this.dirty;
         this.dirty = true;
-        this.notifyPath();
+        // Avoid re-rendering the whole window on every keystroke.
+        if (becameDirty) this.notifyPath();
       },
       subscribe: (handler) => {
         this.listeners.add(handler);

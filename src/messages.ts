@@ -1,7 +1,5 @@
 import type { WisdomRoot, WisdomTemplates } from "@wisdom/core";
 
-export type { WisdomTemplates };
-
 /** Host → Webview */
 export type HostToWebview =
   | {
@@ -17,5 +15,4 @@ export type HostToWebview =
 /** Webview → Host */
 export type WebviewToHost =
   | { type: "ready" }
-  | { type: "edit"; data: WisdomRoot }
-  | { type: "log"; message: string };
+  | { type: "edit"; data: WisdomRoot };

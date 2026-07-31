@@ -28,6 +28,7 @@ export function WisdomEditorApp({ bridge }: { bridge: HostBridge }) {
   const [warnings, setWarnings] = useState<string[]>([]);
   const [welcome, setWelcome] = useState(false);
   const [recent, setRecent] = useState<RecentItem[]>([]);
+  const [savedFlash, setSavedFlash] = useState(false);
 
   useEffect(() => {
     const unsubscribe = bridge.subscribe((msg) => {
@@ -48,11 +49,18 @@ export function WisdomEditorApp({ bridge }: { bridge: HostBridge }) {
         setWarnings((prev) => [...prev, msg.text]);
       } else if (msg.type === "saved") {
         setDirty(false);
+        setSavedFlash(true);
       }
     });
     bridge.ready();
     return unsubscribe;
   }, [bridge]);
+
+  useEffect(() => {
+    if (!savedFlash) return;
+    const t = window.setTimeout(() => setSavedFlash(false), 2000);
+    return () => window.clearTimeout(t);
+  }, [savedFlash]);
 
   const commit = useCallback(
     (next: WisdomRoot) => {
@@ -106,6 +114,7 @@ export function WisdomEditorApp({ bridge }: { bridge: HostBridge }) {
       <header className="top">
         <span className="title">{fileName || "未命名.wisdom"}</span>
         {dirty && <span className="dirty-badge">已修改</span>}
+        {savedFlash && <span className="saved-badge">已保存</span>}
       </header>
       {warnings.length > 0 && (
         <div className="warning-banner" role="alert">
@@ -127,20 +136,33 @@ export function WisdomEditorApp({ bridge }: { bridge: HostBridge }) {
         ))}
       </nav>
       <main className="main">
+        {/* Business tabs mount on demand. Only JSON stays mounted to keep its draft buffer. */}
         {tab === "电表信息" && (
-          <MeterTab data={data} templates={templates} onChange={commit} />
+          <div className="tab-panel">
+            <MeterTab data={data} templates={templates} onChange={commit} />
+          </div>
         )}
         {tab === "检定方案" && (
-          <SchemeTab data={data} templates={templates} onChange={commit} />
+          <div className="tab-panel">
+            <SchemeTab data={data} templates={templates} onChange={commit} />
+          </div>
         )}
         {tab === "测试项目" && (
-          <TestItemTab data={data} templates={templates} onChange={commit} />
+          <div className="tab-panel">
+            <TestItemTab data={data} templates={templates} onChange={commit} />
+          </div>
         )}
         {tab === "结果明细" && (
-          <ResultTab data={data} templates={templates} onChange={commit} />
+          <div className="tab-panel">
+            <ResultTab data={data} templates={templates} onChange={commit} />
+          </div>
         )}
-        {tab === "证书/人员" && <MetaTab data={data} onChange={commit} />}
-        {tab === "原始 JSON" && <JsonTab data={data} onApply={commit} />}
+        {tab === "证书/人员" && (
+          <div className="tab-panel">
+            <MetaTab data={data} onChange={commit} />
+          </div>
+        )}
+        <JsonTab data={data} onApply={commit} active={tab === "原始 JSON"} />
       </main>
     </div>
   );

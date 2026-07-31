@@ -77,6 +77,7 @@ export class WisdomDocument implements vscode.CustomDocument {
   async saveAs(target: vscode.Uri): Promise<void> {
     const encoded = encodeWisdom(this._data);
     await vscode.workspace.fs.writeFile(target, encoded);
+    this._dirty = false;
   }
 
   dispose(): void {

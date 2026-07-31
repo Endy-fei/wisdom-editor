@@ -120,6 +120,11 @@ export class WisdomEditorProvider implements vscode.CustomEditorProvider<WisdomD
     _cancellation: vscode.CancellationToken
   ): Promise<void> {
     await document.saveAs(destination);
+    const panel = this.panels.get(document.uri.toString());
+    if (panel) {
+      const msg: HostToWebview = { type: "saved" };
+      void panel.webview.postMessage(msg);
+    }
   }
 
   async revertCustomDocument(

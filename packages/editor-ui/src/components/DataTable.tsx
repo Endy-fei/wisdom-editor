@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { JsonObject } from "@wisdom/core";
+import { DeferredInput } from "./DeferredInput";
 
 export type Column = {
   key: string;
@@ -43,7 +44,12 @@ export function DataTable({
   createRow,
   emptyText = "暂无数据",
 }: Props) {
+  const [localRows, setLocalRows] = useState(rows);
   const [selected, setSelected] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    setLocalRows(rows);
+  }, [rows]);
 
   const toggle = (index: number) => {
     setSelected((prev) => {
@@ -55,29 +61,41 @@ export function DataTable({
   };
 
   const toggleAll = () => {
-    if (selected.size === rows.length) {
+    if (selected.size === localRows.length) {
       setSelected(new Set());
     } else {
-      setSelected(new Set(rows.map((_, i) => i)));
+      setSelected(new Set(localRows.map((_, i) => i)));
     }
   };
 
-  const updateCell = (rowIndex: number, key: string, raw: string) => {
-    const next = rows.map((row, i) => {
-      if (i !== rowIndex) return row;
-      return { ...row, [key]: parseCell(raw, row[key]) };
-    });
+  const commitCell = (rowIndex: number, key: string, raw: string) => {
+    const prev = localRows[rowIndex]?.[key];
+    const parsed = parseCell(raw, prev);
+    if (parsed === prev || String(parsed) === cellToString(prev)) {
+      // restore display if parse rejected change
+      setLocalRows(rows);
+      return;
+    }
+    const next = localRows.map((row, i) =>
+      i === rowIndex ? { ...row, [key]: parsed } : row
+    );
+    setLocalRows(next);
     onChange(next);
   };
 
   const addRow = () => {
-    onChange([...rows, createRow()]);
+    const next = [...localRows, createRow()];
+    setLocalRows(next);
+    onChange(next);
   };
 
   const deleteSelected = () => {
     if (selected.size === 0) return;
-    onChange(rows.filter((_, i) => !selected.has(i)));
+    if (!window.confirm(`确认删除选中的 ${selected.size} 行？`)) return;
+    const next = localRows.filter((_, i) => !selected.has(i));
+    setLocalRows(next);
     setSelected(new Set());
+    onChange(next);
   };
 
   return (
@@ -94,7 +112,7 @@ export function DataTable({
         >
           删除选中
         </button>
-        <span className="muted">共 {rows.length} 行</span>
+        <span className="muted">共 {localRows.length} 行 · 单元格失焦后保存</span>
       </div>
       <div className="table-scroll">
         <table>
@@ -103,7 +121,7 @@ export function DataTable({
               <th className="col-check">
                 <input
                   type="checkbox"
-                  checked={rows.length > 0 && selected.size === rows.length}
+                  checked={localRows.length > 0 && selected.size === localRows.length}
                   onChange={toggleAll}
                   aria-label="全选"
                 />
@@ -116,15 +134,18 @@ export function DataTable({
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 && (
+            {localRows.length === 0 && (
               <tr>
                 <td colSpan={columns.length + 1} className="empty">
                   {emptyText}
                 </td>
               </tr>
             )}
-            {rows.map((row, rowIndex) => (
-              <tr key={String(row.ID ?? rowIndex)} className={selected.has(rowIndex) ? "selected" : ""}>
+            {localRows.map((row, rowIndex) => (
+              <tr
+                key={String(row.ID ?? rowIndex)}
+                className={selected.has(rowIndex) ? "selected" : ""}
+              >
                 <td className="col-check">
                   <input
                     type="checkbox"
@@ -135,10 +156,10 @@ export function DataTable({
                 </td>
                 {columns.map((col) => (
                   <td key={col.key}>
-                    <input
+                    <DeferredInput
                       className="cell-input"
                       value={cellToString(row[col.key])}
-                      onChange={(e) => updateCell(rowIndex, col.key, e.target.value)}
+                      onCommit={(raw) => commitCell(rowIndex, col.key, raw)}
                     />
                   </td>
                 ))}

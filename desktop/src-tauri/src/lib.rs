@@ -7,11 +7,9 @@ use std::sync::Mutex;
 use tauri::{Emitter, Manager};
 use tauri::menu::{MenuBuilder, PredefinedMenuItem, SubmenuBuilder};
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_fs::init())
         .manage(AppState {
             startup_path: Mutex::new(None),
         })

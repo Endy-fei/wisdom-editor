@@ -36,6 +36,15 @@ export function App() {
       })
       .then((u) => unlisteners.push(u));
 
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "s") return;
+      e.preventDefault();
+      if (e.shiftKey) void host.saveAs();
+      else void host.save();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    unlisteners.push(() => window.removeEventListener("keydown", onKeyDown));
+
     return () => {
       for (const u of unlisteners) u();
     };

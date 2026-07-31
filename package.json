@@ -2,8 +2,18 @@
   "name": "wisdom-editor",
   "displayName": "Wisdom Editor",
   "description": "可视化编辑 .wisdom（gzip+JSON）申校文件",
-  "version": "0.1.0",
-  "publisher": "local",
+  "version": "1.0.0",
+  "publisher": "endy-fei",
+  "icon": "media/icon.png",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Endy-fei/wisdom-editor.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Endy-fei/wisdom-editor/issues"
+  },
+  "homepage": "https://github.com/Endy-fei/wisdom-editor#readme",
   "engines": { "vscode": "^1.85.0" },
   "categories": ["Other"],
   "activationEvents": ["onCustomEditor:wisdom.editor"],
@@ -52,7 +62,7 @@
     "watch:ext": "node esbuild.js --watch",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
-    "package": "npm run build && vsce package",
+    "package": "npm run build && npx @vscode/vsce package --no-dependencies",
     "desktop:dev": "npm run tauri dev -w wisdom-desktop",
     "desktop:build": "npm run tauri build -w wisdom-desktop"
   },

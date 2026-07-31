@@ -1,6 +1,7 @@
 import type { JsonObject, WisdomRoot, WisdomTemplates } from "@wisdom/core";
 import { cloneWithNewId } from "../clone";
 import { DataTable, type Column } from "./DataTable";
+import { DeferredInput } from "./DeferredInput";
 
 type Props = {
   data: WisdomRoot;
@@ -61,13 +62,13 @@ export function SchemeTab({ data, templates, onChange }: Props) {
           {SCHEME_FIELDS.map((f) => (
             <label key={f.key} className="field">
               <span>{f.label}</span>
-              <input
+              <DeferredInput
                 value={
                   scheme[f.key] === undefined || scheme[f.key] === null
                     ? ""
                     : String(scheme[f.key])
                 }
-                onChange={(e) => updateScheme(f.key, e.target.value)}
+                onCommit={(raw) => updateScheme(f.key, raw)}
               />
             </label>
           ))}

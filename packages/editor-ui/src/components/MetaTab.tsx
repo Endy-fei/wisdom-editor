@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { WisdomRoot } from "@wisdom/core";
+import { DeferredInput } from "./DeferredInput";
 
 type Props = {
   data: WisdomRoot;
@@ -46,18 +47,17 @@ export function MetaTab({ data, onChange }: Props) {
     onChange({ ...data, CertificateCode: rowsToCert(nextRows) });
   };
 
-  const updateRow = (index: number, field: "key" | "value", raw: string) => {
-    const next = rows.map((r, i) => (i === index ? { ...r, [field]: raw } : r));
-    const row = next[index];
-    const hasKey = Boolean(row.key.trim());
+  const updateLocalRow = (index: number, field: "key" | "value", raw: string) => {
+    setRows((prev) => prev.map((r, i) => (i === index ? { ...r, [field]: raw } : r)));
+  };
 
-    // Draft rows (empty key): keep local only until a key is entered.
-    if (!hasKey) {
-      setRows(next);
-      return;
-    }
-
-    commitRows(next);
+  const commitRowAt = (index: number) => {
+    setRows((prev) => {
+      const row = prev[index];
+      if (!row?.key.trim()) return prev;
+      onChange({ ...data, CertificateCode: rowsToCert(prev) });
+      return prev;
+    });
   };
 
   const deleteRow = (index: number) => {
@@ -68,6 +68,7 @@ export function MetaTab({ data, onChange }: Props) {
       setRows(next);
       return;
     }
+    if (!window.confirm(`确认删除证书映射「${removed.key}」？`)) return;
     commitRows(next);
   };
 
@@ -78,27 +79,31 @@ export function MetaTab({ data, onChange }: Props) {
         <div className="form-grid">
           <label className="field">
             <span>检定员 Inspector</span>
-            <input
+            <DeferredInput
               value={data.Inspector ?? ""}
-              onChange={(e) => onChange({ ...data, Inspector: e.target.value })}
+              onCommit={(raw) => onChange({ ...data, Inspector: raw })}
             />
           </label>
           <label className="field">
             <span>核验员 Verifier</span>
-            <input
+            <DeferredInput
               value={data.Verifier ?? ""}
-              onChange={(e) => onChange({ ...data, Verifier: e.target.value })}
+              onCommit={(raw) => onChange({ ...data, Verifier: raw })}
             />
           </label>
           <label className="field">
             <span>LastNum</span>
-            <input
-              value={data.LastNum === undefined || data.LastNum === null ? "" : String(data.LastNum)}
-              onChange={(e) => {
-                const n = Number(e.target.value);
+            <DeferredInput
+              value={
+                data.LastNum === undefined || data.LastNum === null
+                  ? ""
+                  : String(data.LastNum)
+              }
+              onCommit={(raw) => {
+                const n = Number(raw);
                 onChange({
                   ...data,
-                  LastNum: e.target.value.trim() === "" || Number.isNaN(n) ? 0 : n,
+                  LastNum: raw.trim() === "" || Number.isNaN(n) ? 0 : n,
                 });
               }}
             />
@@ -147,7 +152,8 @@ export function MetaTab({ data, onChange }: Props) {
                       className="cell-input"
                       value={row.key}
                       placeholder="表号"
-                      onChange={(e) => updateRow(index, "key", e.target.value)}
+                      onChange={(e) => updateLocalRow(index, "key", e.target.value)}
+                      onBlur={() => commitRowAt(index)}
                     />
                   </td>
                   <td>
@@ -155,7 +161,8 @@ export function MetaTab({ data, onChange }: Props) {
                       className="cell-input"
                       value={row.value}
                       placeholder="证书号"
-                      onChange={(e) => updateRow(index, "value", e.target.value)}
+                      onChange={(e) => updateLocalRow(index, "value", e.target.value)}
+                      onBlur={() => commitRowAt(index)}
                     />
                   </td>
                   <td className="col-actions">

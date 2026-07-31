@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import type { MeterInfo, MeterOtherInfo, WisdomRoot, WisdomTemplates } from "@wisdom/core";
-import { newId } from "../clone";
+import {
+  newId,
+  type MeterInfo,
+  type MeterOtherInfo,
+  type WisdomRoot,
+  type WisdomTemplates,
+} from "@wisdom/core";
+import { DeferredInput } from "./DeferredInput";
 
 type Props = {
   data: WisdomRoot;
@@ -141,6 +147,10 @@ export function MeterTab({ data, templates, onChange }: Props) {
 
   const deleteMeter = () => {
     if (!selected) return;
+    const label = selected.MeterNo || selected.MeterSeat || selected.ID;
+    if (!window.confirm(`确认删除电表「${label}」？相关证书与附加信息也会一并清理。`)) {
+      return;
+    }
     const id = selected.ID;
     const meterNo = selected.MeterNo;
     const MeterInfoList = meters.filter((m) => m.ID !== id);
@@ -207,17 +217,14 @@ export function MeterTab({ data, templates, onChange }: Props) {
                       <option value="false">否</option>
                     </select>
                   ) : (
-                    <input
+                    <DeferredInput
                       value={
                         selected[f.key] === undefined || selected[f.key] === null
                           ? ""
                           : String(selected[f.key])
                       }
-                      onChange={(e) =>
-                        updateMeter(
-                          f.key,
-                          parseValue(e.target.value, f.kind, selected[f.key])
-                        )
+                      onCommit={(raw) =>
+                        updateMeter(f.key, parseValue(raw, f.kind, selected[f.key]))
                       }
                     />
                   )}
@@ -234,13 +241,13 @@ export function MeterTab({ data, templates, onChange }: Props) {
               {OTHER_FIELDS.map((f) => (
                 <label key={f.key} className="field">
                   <span>{f.label}</span>
-                  <input
+                  <DeferredInput
                     value={
                       other?.[f.key] === undefined || other?.[f.key] === null
                         ? ""
                         : String(other[f.key])
                     }
-                    onChange={(e) => updateOther(f.key, e.target.value)}
+                    onCommit={(raw) => updateOther(f.key, raw)}
                   />
                 </label>
               ))}

@@ -12,3 +12,8 @@ samples/**
 node_modules/**
 esbuild.js
 vitest.config.ts
+media/icon-source.png
+media/icon-1024.png
+desktop/**
+packages/**
+*.vsix
