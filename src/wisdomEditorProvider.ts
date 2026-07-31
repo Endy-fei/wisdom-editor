@@ -81,6 +81,7 @@ export class WisdomEditorProvider implements vscode.CustomEditorProvider<WisdomD
           data: document.data,
           fileName: document.uri.path.split("/").pop() ?? "file.wisdom",
           templates: buildTemplates(),
+          warnings: [...document.warnings],
         };
         void webviewPanel.webview.postMessage(msg);
         return;
@@ -131,6 +132,7 @@ export class WisdomEditorProvider implements vscode.CustomEditorProvider<WisdomD
         data: document.data,
         fileName: document.uri.path.split("/").pop() ?? "file.wisdom",
         templates: buildTemplates(),
+        warnings: [...fresh.warnings],
       };
       void panel.webview.postMessage(msg);
     }

@@ -14,22 +14,39 @@ export class WisdomDocument implements vscode.CustomDocument {
 
   private _data: WisdomRoot;
   private _dirty = false;
+  private readonly _warnings: string[];
 
   private constructor(
     readonly uri: vscode.Uri,
-    data: WisdomRoot
+    data: WisdomRoot,
+    warnings: string[] = []
   ) {
     this._data = data;
+    this._warnings = warnings;
   }
 
   static async create(uri: vscode.Uri): Promise<WisdomDocument> {
-    const bytes = await vscode.workspace.fs.readFile(uri);
-    const decoded = decodeWisdom(Buffer.from(bytes));
-    return new WisdomDocument(uri, ensureWisdomShape(decoded));
+    try {
+      const bytes = await vscode.workspace.fs.readFile(uri);
+      const decoded = decodeWisdom(Buffer.from(bytes));
+      const warnings: string[] = [];
+      if (!Array.isArray(decoded.MeterInfoList)) {
+        warnings.push("结构不完整，已用空值兜底（MeterInfoList 非数组）");
+      }
+      return new WisdomDocument(uri, ensureWisdomShape(decoded), warnings);
+    } catch (e) {
+      throw new Error(
+        `无法打开 Wisdom 文件（需为 gzip+JSON）：${e instanceof Error ? e.message : String(e)}`
+      );
+    }
   }
 
   get data(): WisdomRoot {
     return this._data;
+  }
+
+  get warnings(): readonly string[] {
+    return this._warnings;
   }
 
   get isDirty(): boolean {

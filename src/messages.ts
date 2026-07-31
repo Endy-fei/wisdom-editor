@@ -10,8 +10,15 @@ export type WisdomTemplates = {
 
 /** Host → Webview */
 export type HostToWebview =
-  | { type: "init"; data: WisdomRoot; fileName: string; templates: WisdomTemplates }
-  | { type: "saved" };
+  | {
+      type: "init";
+      data: WisdomRoot;
+      fileName: string;
+      templates: WisdomTemplates;
+      warnings?: string[];
+    }
+  | { type: "saved" }
+  | { type: "warning"; text: string };
 
 /** Webview → Host */
 export type WebviewToHost =

@@ -49,6 +49,19 @@ body {
   background: var(--vscode-badge-background, var(--vscode-button-background));
 }
 
+.warning-banner {
+  padding: 8px 12px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--vscode-inputValidation-warningForeground, var(--vscode-foreground));
+  background: var(
+    --vscode-inputValidation-warningBackground,
+    var(--vscode-inputValidation-infoBackground, rgba(128, 128, 0, 0.15))
+  );
+  border-bottom: 1px solid
+    var(--vscode-inputValidation-warningBorder, var(--vscode-panel-border));
+}
+
 .tabs {
   display: flex;
   flex-wrap: wrap;

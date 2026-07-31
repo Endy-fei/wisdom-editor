@@ -21,6 +21,16 @@ async function resolveWisdomUri(uri?: vscode.Uri): Promise<vscode.Uri | undefine
   return picked?.[0];
 }
 
+/** Drop prior tmp mappings that point at the same .wisdom file. */
+function pruneMappingsForWisdom(wisdomUri: vscode.Uri): void {
+  const key = wisdomUri.toString();
+  for (const [tmpPath, mapped] of tmpToWisdom) {
+    if (mapped.toString() === key) {
+      tmpToWisdom.delete(tmpPath);
+    }
+  }
+}
+
 export async function openWisdomAsText(uri?: vscode.Uri): Promise<void> {
   const target = await resolveWisdomUri(uri);
   if (!target) return;
@@ -35,6 +45,8 @@ export async function openWisdomAsText(uri?: vscode.Uri): Promise<void> {
     );
     return;
   }
+
+  pruneMappingsForWisdom(target);
 
   const tmp = path.join(
     os.tmpdir(),
@@ -58,7 +70,8 @@ export async function writeBackFromJson(): Promise<void> {
   const editor = vscode.window.activeTextEditor;
   if (!editor) return;
 
-  const wisdomUri = tmpToWisdom.get(editor.document.uri.fsPath);
+  const tmpPath = editor.document.uri.fsPath;
+  const wisdomUri = tmpToWisdom.get(tmpPath);
   if (!wisdomUri) {
     void vscode.window.showErrorMessage("当前文件不是由 Wisdom 文本打开产生的临时 JSON");
     return;
@@ -67,7 +80,10 @@ export async function writeBackFromJson(): Promise<void> {
   try {
     const obj = JSON.parse(editor.document.getText());
     await vscode.workspace.fs.writeFile(wisdomUri, encodeWisdom(obj));
-    void vscode.window.showInformationMessage(`已写回 ${wisdomUri.fsPath}`);
+    tmpToWisdom.delete(tmpPath);
+    void vscode.window.showInformationMessage(
+      `已写回 ${wisdomUri.fsPath}。若可视化编辑器仍打开，请关闭后重新打开以加载最新内容。`
+    );
   } catch (e) {
     void vscode.window.showErrorMessage(String(e));
   }

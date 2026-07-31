@@ -25,6 +25,7 @@ export function App() {
   const [templates, setTemplates] = useState<WisdomTemplates | null>(null);
   const [fileName, setFileName] = useState("");
   const [dirty, setDirty] = useState(false);
+  const [warnings, setWarnings] = useState<string[]>([]);
 
   useEffect(() => {
     const vscode = getVsCodeApi();
@@ -34,7 +35,10 @@ export function App() {
         setData(msg.data);
         setFileName(msg.fileName ?? "");
         if (msg.templates) setTemplates(msg.templates);
+        setWarnings(Array.isArray(msg.warnings) ? msg.warnings : []);
         setDirty(false);
+      } else if (msg?.type === "warning" && typeof msg.text === "string") {
+        setWarnings((prev) => [...prev, msg.text]);
       } else if (msg?.type === "saved") {
         setDirty(false);
       }
@@ -60,6 +64,13 @@ export function App() {
         <span className="title">{fileName || "未命名.wisdom"}</span>
         {dirty && <span className="dirty-badge">已修改</span>}
       </header>
+      {warnings.length > 0 && (
+        <div className="warning-banner" role="alert">
+          {warnings.map((w, i) => (
+            <div key={`${i}-${w}`}>{w}</div>
+          ))}
+        </div>
+      )}
       <nav className="tabs">
         {TABS.map((t) => (
           <button

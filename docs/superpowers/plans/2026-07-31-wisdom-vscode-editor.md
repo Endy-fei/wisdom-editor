@@ -1497,7 +1497,7 @@ git commit -m "feat: open wisdom as temp JSON and write back"
 - Modify: `README.md`
 - Modify: `.vscodeignore`（确保 `dist/webview` 打进 vsix）
 
-- [ ] **Step 1: `WisdomDocument.create` 错误上抛为友好信息**
+- [x] **Step 1: `WisdomDocument.create` 错误上抛为友好信息**
 
 ```ts
 try {
@@ -1510,11 +1510,11 @@ try {
 }
 ```
 
-- [ ] **Step 2: 结构不完整时在 Webview 顶栏显示警告条**（`MeterInfoList` 曾缺失被兜底时，可在 `ensureWisdomShape` 返回 `{ data, warnings }`——若改动面大，可仅在 Host 检测 `!Array.isArray(raw.MeterInfoList)` 时 `postMessage({type:'warning', text:'结构不完整，已用空值兜底'})`）
+- [x] **Step 2: 结构不完整时在 Webview 顶栏显示警告条**（`MeterInfoList` 曾缺失被兜底时，可在 `ensureWisdomShape` 返回 `{ data, warnings }`——若改动面大，可仅在 Host 检测 `!Array.isArray(raw.MeterInfoList)` 时 `postMessage({type:'warning', text:'结构不完整，已用空值兜底'})`）
 
-- [ ] **Step 3: 更新 README**（中文）：功能列表、开发、调试、兼容说明、命令列表
+- [x] **Step 3: 更新 README**（中文）：功能列表、开发、调试、兼容说明、命令列表
 
-- [ ] **Step 4: 全量测试**
+- [x] **Step 4: 全量测试**
 
 ```powershell
 npx vitest run
@@ -1523,9 +1523,9 @@ npm run build
 
 Expected: 全部 PASS；`dist/extension.js` 与 `dist/webview/assets/index.js` 存在。
 
-- [ ] **Step 5: 对照规格验收清单勾选**（见 design §11）
+- [x] **Step 5: 对照规格验收清单勾选**（见 design §11）
 
-- [ ] **Step 6: Commit（用户要求时）**
+- [x] **Step 6: Commit（用户要求时）**
 
 ```bash
 git add -A
