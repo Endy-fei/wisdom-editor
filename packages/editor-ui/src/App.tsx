@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { getVsCodeApi } from "./vscodeApi";
-import type { WisdomRoot, WisdomTemplates } from "./types";
+import type { WisdomRoot, WisdomTemplates } from "@wisdom/core";
+import type { HostBridge, RecentItem } from "./bridge";
 import { MeterTab } from "./components/MeterTab";
 import { SchemeTab } from "./components/SchemeTab";
 import { TestItemTab } from "./components/TestItemTab";
@@ -19,40 +19,83 @@ const TABS = [
 
 type TabName = (typeof TABS)[number];
 
-export function App() {
+export function WisdomEditorApp({ bridge }: { bridge: HostBridge }) {
   const [tab, setTab] = useState<TabName>("电表信息");
   const [data, setData] = useState<WisdomRoot | null>(null);
   const [templates, setTemplates] = useState<WisdomTemplates | null>(null);
   const [fileName, setFileName] = useState("");
   const [dirty, setDirty] = useState(false);
   const [warnings, setWarnings] = useState<string[]>([]);
+  const [welcome, setWelcome] = useState(false);
+  const [recent, setRecent] = useState<RecentItem[]>([]);
 
   useEffect(() => {
-    const vscode = getVsCodeApi();
-    const handler = (event: MessageEvent) => {
-      const msg = event.data;
-      if (msg?.type === "init") {
+    const unsubscribe = bridge.subscribe((msg) => {
+      if (msg.type === "init") {
         setData(msg.data);
         setFileName(msg.fileName ?? "");
         if (msg.templates) setTemplates(msg.templates);
         setWarnings(Array.isArray(msg.warnings) ? msg.warnings : []);
         setDirty(false);
-      } else if (msg?.type === "warning" && typeof msg.text === "string") {
+        setWelcome(false);
+      } else if (msg.type === "welcome") {
+        setWelcome(true);
+        setRecent(Array.isArray(msg.recent) ? msg.recent : []);
+        setData(null);
+        setTemplates(null);
+        setDirty(false);
+      } else if (msg.type === "warning" && typeof msg.text === "string") {
         setWarnings((prev) => [...prev, msg.text]);
-      } else if (msg?.type === "saved") {
+      } else if (msg.type === "saved") {
         setDirty(false);
       }
-    };
-    window.addEventListener("message", handler);
-    vscode.postMessage({ type: "ready" });
-    return () => window.removeEventListener("message", handler);
-  }, []);
+    });
+    bridge.ready();
+    return unsubscribe;
+  }, [bridge]);
 
-  const commit = useCallback((next: WisdomRoot) => {
-    setData(next);
-    setDirty(true);
-    getVsCodeApi().postMessage({ type: "edit", data: next });
-  }, []);
+  const commit = useCallback(
+    (next: WisdomRoot) => {
+      setData(next);
+      setDirty(true);
+      bridge.commit(next);
+    },
+    [bridge]
+  );
+
+  if (welcome) {
+    return (
+      <div className="page welcome-page">
+        <div className="welcome">
+          <h1 className="welcome-title">Wisdom 编辑器</h1>
+          <p className="welcome-text">请打开 .wisdom 文件</p>
+          {bridge.openFile && (
+            <button type="button" className="btn primary" onClick={() => bridge.openFile?.()}>
+              打开文件…
+            </button>
+          )}
+          {recent.length > 0 && (
+            <div className="welcome-recent">
+              <h2 className="section-title">最近打开</h2>
+              <ul className="welcome-recent-list">
+                {recent.map((item) => (
+                  <li key={item.path}>
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() => bridge.openRecent?.(item.path)}
+                    >
+                      {item.name || item.path}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   if (!data || !templates) {
     return <div className="page">加载中…</div>;

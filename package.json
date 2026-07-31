@@ -8,6 +8,7 @@
   "categories": ["Other"],
   "activationEvents": ["onCustomEditor:wisdom.editor"],
   "main": "./dist/extension.js",
+  "workspaces": ["packages/*", "webview"],
   "contributes": {
     "customEditors": [
       {
@@ -46,7 +47,7 @@
   },
   "scripts": {
     "build:ext": "node esbuild.js",
-    "build:webview": "npm run build --prefix webview",
+    "build:webview": "npm run build -w wisdom-webview",
     "build": "npm run build:webview && npm run build:ext",
     "watch:ext": "node esbuild.js --watch",
     "test": "vitest run --passWithNoTests",

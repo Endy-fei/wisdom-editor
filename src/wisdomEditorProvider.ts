@@ -1,13 +1,15 @@
 import * as vscode from "vscode";
-import { WisdomDocument } from "./wisdomDocument";
-import type { HostToWebview, WebviewToHost, WisdomTemplates } from "./messages";
-import { createEmptyMeter, ensureWisdomShape } from "./wisdomModel";
 import {
+  createEmptyMeter,
+  ensureWisdomShape,
   emptyResultDetail,
   emptySchemeGroup,
   emptyTestItem,
-} from "./defaults";
-import type { WisdomRoot } from "./types";
+  type WisdomRoot,
+  type WisdomTemplates,
+} from "@wisdom/core";
+import { WisdomDocument } from "./wisdomDocument";
+import type { HostToWebview, WebviewToHost } from "./messages";
 
 function buildTemplates(): WisdomTemplates {
   const { meter, other } = createEmptyMeter(0);

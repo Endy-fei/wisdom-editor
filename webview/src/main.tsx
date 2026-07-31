@@ -1,10 +1,13 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import { App } from "./App";
-import "./styles.css";
+import { WisdomEditorApp } from "@wisdom/editor-ui";
+import "@wisdom/editor-ui/styles.css";
+import { createVsCodeBridge } from "./vscodeBridge";
+
+const bridge = createVsCodeBridge();
 
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <App />
+    <WisdomEditorApp bridge={bridge} />
   </React.StrictMode>
 );

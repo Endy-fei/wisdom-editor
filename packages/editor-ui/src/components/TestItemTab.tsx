@@ -1,4 +1,4 @@
-import type { JsonObject, WisdomRoot, WisdomTemplates } from "../types";
+import type { JsonObject, WisdomRoot, WisdomTemplates } from "@wisdom/core";
 import { cloneWithNewId } from "../clone";
 import { DataTable, type Column } from "./DataTable";
 

@@ -1,4 +1,5 @@
 const esbuild = require("esbuild");
+const path = require("path");
 
 const watch = process.argv.includes("--watch");
 
@@ -11,6 +12,9 @@ const ctx = {
   format: "cjs",
   sourcemap: true,
   target: "node18",
+  alias: {
+    "@wisdom/core": path.resolve(__dirname, "packages/wisdom-core/src/index.ts"),
+  },
 };
 
 if (watch) {

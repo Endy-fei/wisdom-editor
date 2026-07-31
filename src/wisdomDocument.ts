@@ -1,7 +1,6 @@
 import * as vscode from "vscode";
+import { ensureWisdomShape, type WisdomRoot } from "@wisdom/core";
 import { decodeWisdom, encodeWisdom } from "./gzipJson";
-import { ensureWisdomShape } from "./wisdomModel";
-import type { WisdomRoot } from "./types";
 
 export class WisdomDocument implements vscode.CustomDocument {
   private readonly _onDidDispose = new vscode.EventEmitter<void>();

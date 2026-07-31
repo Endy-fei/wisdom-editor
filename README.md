@@ -17,13 +17,25 @@ npm install
 npm run build
 ```
 
-在 VS Code / Cursor 中按 **F5** 启动 Extension Development Host，打开 `samples/sample.wisdom` 进行调试。
+### 用 F5 调试（重要）
 
-打包（可选）：
+1. 在本仓库按 **F5**（或运行配置 `Run Extension`）
+2. 会**新开一个**「扩展开发主机」窗口；扩展**只在这个新窗口里生效**
+3. 在新窗口中打开 `samples/sample.wisdom`（F5 会默认打开 `samples` 文件夹）
+4. **当前这个开发项目窗口不会加载未安装的扩展**——在项目窗口里双击 `.wisdom` 仍会提示二进制/无法预览，这是正常现象
+
+若希望在日常 Cursor / VS Code 窗口里也能打开 `.wisdom`，需要先打包并安装扩展（见下）。
+
+### 打包并安装到当前编辑器
 
 ```bash
-npm run package
+npm run build
+npx @vscode/vsce package --no-dependencies
+cursor --install-extension wisdom-editor-0.1.0.vsix
 ```
+
+VS Code 则把上面最后一行换成：`code --install-extension wisdom-editor-0.1.0.vsix`  
+安装后**重载窗口**，再在项目中双击 `.wisdom`。
 
 ## 命令
 

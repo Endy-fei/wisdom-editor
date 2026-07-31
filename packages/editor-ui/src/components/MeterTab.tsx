@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { MeterInfo, MeterOtherInfo, WisdomRoot, WisdomTemplates } from "../types";
+import type { MeterInfo, MeterOtherInfo, WisdomRoot, WisdomTemplates } from "@wisdom/core";
 import { newId } from "../clone";
 
 type Props = {

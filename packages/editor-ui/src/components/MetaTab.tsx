@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { WisdomRoot } from "../types";
+import type { WisdomRoot } from "@wisdom/core";
 
 type Props = {
   data: WisdomRoot;

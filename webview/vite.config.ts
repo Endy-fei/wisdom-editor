@@ -5,6 +5,12 @@ import path from "path";
 export default defineConfig({
   plugins: [react()],
   base: "./",
+  resolve: {
+    alias: {
+      "@wisdom/core": path.resolve(__dirname, "../packages/wisdom-core/src"),
+      "@wisdom/editor-ui": path.resolve(__dirname, "../packages/editor-ui/src"),
+    },
+  },
   build: {
     outDir: path.resolve(__dirname, "../dist/webview"),
     emptyOutDir: true,

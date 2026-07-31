@@ -1,4 +1,4 @@
-import type { JsonObject } from "./types";
+import type { JsonObject } from "@wisdom/core";
 
 export function newId(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {

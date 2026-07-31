@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { JsonObject } from "../types";
+import type { JsonObject } from "@wisdom/core";
 
 export type Column = {
   key: string;

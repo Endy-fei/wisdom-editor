@@ -1,12 +1,6 @@
-import type { JsonObject, MeterInfo, MeterOtherInfo, WisdomRoot } from "./types";
+import type { WisdomRoot, WisdomTemplates } from "@wisdom/core";
 
-export type WisdomTemplates = {
-  meter: MeterInfo;
-  other: MeterOtherInfo;
-  schemeGroup: JsonObject;
-  testItem: JsonObject;
-  result: JsonObject;
-};
+export type { WisdomTemplates };
 
 /** Host → Webview */
 export type HostToWebview =

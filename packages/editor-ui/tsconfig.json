@@ -10,14 +10,7 @@
     "esModuleInterop": true,
     "isolatedModules": true,
     "noEmit": true,
-    "resolveJsonModule": true,
-    "types": ["vite/client"],
-    "baseUrl": ".",
-    "paths": {
-      "@wisdom/core": ["../packages/wisdom-core/src/index.ts"],
-      "@wisdom/editor-ui": ["../packages/editor-ui/src/index.ts"],
-      "@wisdom/editor-ui/*": ["../packages/editor-ui/src/*"]
-    }
+    "resolveJsonModule": true
   },
   "include": ["src"]
 }

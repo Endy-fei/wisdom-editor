@@ -3,7 +3,7 @@ import { EditorState } from "@codemirror/state";
 import { EditorView, keymap, lineNumbers } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { json } from "@codemirror/lang-json";
-import type { WisdomRoot } from "../types";
+import type { WisdomRoot } from "@wisdom/core";
 
 type Props = {
   data: WisdomRoot;

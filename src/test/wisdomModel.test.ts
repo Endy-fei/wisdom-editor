@@ -4,7 +4,7 @@ import {
   createEmptyMeter,
   removeMeter,
   applyJsonText,
-} from "../wisdomModel";
+} from "@wisdom/core";
 
 describe("wisdomModel", () => {
   it("ensureWisdomShape fills missing arrays/objects without dropping unknowns", () => {

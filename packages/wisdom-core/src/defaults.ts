@@ -1,8 +1,11 @@
-import { randomUUID } from "crypto";
 import type { MeterInfo, MeterOtherInfo, JsonObject } from "./types";
 
 export function newId(): string {
-  return randomUUID().replace(/-/g, "");
+  const c = globalThis.crypto;
+  if (c && typeof c.randomUUID === "function") {
+    return c.randomUUID().replace(/-/g, "");
+  }
+  return `${Date.now().toString(16)}${Math.random().toString(16).slice(2, 14)}`;
 }
 
 export function emptyMeter(seat: number): MeterInfo {
