@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getVsCodeApi } from "./vscodeApi";
-
-type WisdomRoot = {
-  MeterInfoList: unknown[];
-  [key: string]: unknown;
-};
+import type { WisdomRoot, WisdomTemplates } from "./types";
+import { MeterTab } from "./components/MeterTab";
+import { SchemeTab } from "./components/SchemeTab";
+import { TestItemTab } from "./components/TestItemTab";
+import { ResultTab } from "./components/ResultTab";
+import { MetaTab } from "./components/MetaTab";
+import { JsonTab } from "./components/JsonTab";
 
 const TABS = [
   "电表信息",
@@ -15,10 +17,14 @@ const TABS = [
   "原始 JSON",
 ] as const;
 
+type TabName = (typeof TABS)[number];
+
 export function App() {
-  const [tab, setTab] = useState<(typeof TABS)[number]>("电表信息");
+  const [tab, setTab] = useState<TabName>("电表信息");
   const [data, setData] = useState<WisdomRoot | null>(null);
+  const [templates, setTemplates] = useState<WisdomTemplates | null>(null);
   const [fileName, setFileName] = useState("");
+  const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
     const vscode = getVsCodeApi();
@@ -27,6 +33,10 @@ export function App() {
       if (msg?.type === "init") {
         setData(msg.data);
         setFileName(msg.fileName ?? "");
+        if (msg.templates) setTemplates(msg.templates);
+        setDirty(false);
+      } else if (msg?.type === "saved") {
+        setDirty(false);
       }
     };
     window.addEventListener("message", handler);
@@ -34,19 +44,27 @@ export function App() {
     return () => window.removeEventListener("message", handler);
   }, []);
 
-  if (!data) {
+  const commit = useCallback((next: WisdomRoot) => {
+    setData(next);
+    setDirty(true);
+    getVsCodeApi().postMessage({ type: "edit", data: next });
+  }, []);
+
+  if (!data || !templates) {
     return <div className="page">加载中…</div>;
   }
 
   return (
     <div className="page">
       <header className="top">
-        <span className="title">{fileName}</span>
+        <span className="title">{fileName || "未命名.wisdom"}</span>
+        {dirty && <span className="dirty-badge">已修改</span>}
       </header>
       <nav className="tabs">
         {TABS.map((t) => (
           <button
             key={t}
+            type="button"
             className={t === tab ? "tab active" : "tab"}
             onClick={() => setTab(t)}
           >
@@ -55,8 +73,20 @@ export function App() {
         ))}
       </nav>
       <main className="main">
-        {tab === "电表信息" && <p>电表数量：{data.MeterInfoList.length}</p>}
-        {tab !== "电表信息" && <p>{tab}（下一任务实现）</p>}
+        {tab === "电表信息" && (
+          <MeterTab data={data} templates={templates} onChange={commit} />
+        )}
+        {tab === "检定方案" && (
+          <SchemeTab data={data} templates={templates} onChange={commit} />
+        )}
+        {tab === "测试项目" && (
+          <TestItemTab data={data} templates={templates} onChange={commit} />
+        )}
+        {tab === "结果明细" && (
+          <ResultTab data={data} templates={templates} onChange={commit} />
+        )}
+        {tab === "证书/人员" && <MetaTab data={data} onChange={commit} />}
+        {tab === "原始 JSON" && <JsonTab data={data} onApply={commit} />}
       </main>
     </div>
   );

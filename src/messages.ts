@@ -1,8 +1,16 @@
-import type { WisdomRoot } from "./types";
+import type { JsonObject, MeterInfo, MeterOtherInfo, WisdomRoot } from "./types";
+
+export type WisdomTemplates = {
+  meter: MeterInfo;
+  other: MeterOtherInfo;
+  schemeGroup: JsonObject;
+  testItem: JsonObject;
+  result: JsonObject;
+};
 
 /** Host → Webview */
 export type HostToWebview =
-  | { type: "init"; data: WisdomRoot; fileName: string }
+  | { type: "init"; data: WisdomRoot; fileName: string; templates: WisdomTemplates }
   | { type: "saved" };
 
 /** Webview → Host */

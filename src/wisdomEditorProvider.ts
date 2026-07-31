@@ -1,13 +1,32 @@
 import * as vscode from "vscode";
 import { WisdomDocument } from "./wisdomDocument";
-import type { HostToWebview, WebviewToHost } from "./messages";
-import { ensureWisdomShape } from "./wisdomModel";
+import type { HostToWebview, WebviewToHost, WisdomTemplates } from "./messages";
+import { createEmptyMeter, ensureWisdomShape } from "./wisdomModel";
+import {
+  emptyResultDetail,
+  emptySchemeGroup,
+  emptyTestItem,
+} from "./defaults";
 import type { WisdomRoot } from "./types";
+
+function buildTemplates(): WisdomTemplates {
+  const { meter, other } = createEmptyMeter(0);
+  return {
+    meter,
+    other,
+    schemeGroup: emptySchemeGroup(),
+    testItem: emptyTestItem(),
+    result: emptyResultDetail(),
+  };
+}
 
 export class WisdomEditorProvider implements vscode.CustomEditorProvider<WisdomDocument> {
   private readonly _onDidChangeCustomDocument =
     new vscode.EventEmitter<vscode.CustomDocumentEditEvent<WisdomDocument>>();
   readonly onDidChangeCustomDocument = this._onDidChangeCustomDocument.event;
+
+  /** document URI → active webview panel */
+  private readonly panels = new Map<string, vscode.WebviewPanel>();
 
   constructor(private readonly context: vscode.ExtensionContext) {}
 
@@ -39,6 +58,9 @@ export class WisdomEditorProvider implements vscode.CustomEditorProvider<WisdomD
       ],
     };
 
+    const docKey = document.uri.toString();
+    this.panels.set(docKey, webviewPanel);
+
     const updateWebviewHtml = () => {
       webviewPanel.webview.html = this.getReactHtml(webviewPanel.webview);
     };
@@ -58,6 +80,7 @@ export class WisdomEditorProvider implements vscode.CustomEditorProvider<WisdomD
           type: "init",
           data: document.data,
           fileName: document.uri.path.split("/").pop() ?? "file.wisdom",
+          templates: buildTemplates(),
         };
         void webviewPanel.webview.postMessage(msg);
         return;
@@ -67,7 +90,12 @@ export class WisdomEditorProvider implements vscode.CustomEditorProvider<WisdomD
       }
     });
 
-    webviewPanel.onDidDispose(() => changeSub.dispose());
+    webviewPanel.onDidDispose(() => {
+      changeSub.dispose();
+      if (this.panels.get(docKey) === webviewPanel) {
+        this.panels.delete(docKey);
+      }
+    });
   }
 
   async saveCustomDocument(
@@ -75,6 +103,11 @@ export class WisdomEditorProvider implements vscode.CustomEditorProvider<WisdomD
     _cancellation: vscode.CancellationToken
   ): Promise<void> {
     await document.save();
+    const panel = this.panels.get(document.uri.toString());
+    if (panel) {
+      const msg: HostToWebview = { type: "saved" };
+      void panel.webview.postMessage(msg);
+    }
   }
 
   async saveCustomDocumentAs(
@@ -91,7 +124,16 @@ export class WisdomEditorProvider implements vscode.CustomEditorProvider<WisdomD
   ): Promise<void> {
     const fresh = await WisdomDocument.create(document.uri);
     document.replaceData(fresh.data, "Revert");
-    // dirty 应在 save 后清除；revert 场景在后续可增强
+    const panel = this.panels.get(document.uri.toString());
+    if (panel) {
+      const msg: HostToWebview = {
+        type: "init",
+        data: document.data,
+        fileName: document.uri.path.split("/").pop() ?? "file.wisdom",
+        templates: buildTemplates(),
+      };
+      void panel.webview.postMessage(msg);
+    }
   }
 
   async backupCustomDocument(

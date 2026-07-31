@@ -30,6 +30,7 @@ body {
 .top {
   display: flex;
   align-items: center;
+  gap: 10px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--vscode-panel-border, var(--vscode-widget-border));
   background: var(--vscode-editor-background);
@@ -38,6 +39,14 @@ body {
 .title {
   font-weight: 600;
   color: var(--vscode-foreground);
+}
+
+.dirty-badge {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 2px;
+  color: var(--vscode-badge-foreground, var(--vscode-button-foreground));
+  background: var(--vscode-badge-background, var(--vscode-button-background));
 }
 
 .tabs {
@@ -72,6 +81,316 @@ body {
   flex: 1;
   padding: 12px;
   overflow: auto;
+  min-height: 0;
   background: var(--vscode-editor-background);
   color: var(--vscode-foreground);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 100%;
+}
+
+.section-title {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.hint {
+  margin: 12px 0 0;
+  color: var(--vscode-descriptionForeground);
+  font-size: 12px;
+}
+
+.muted {
+  color: var(--vscode-descriptionForeground);
+  font-size: 12px;
+}
+
+.pad {
+  padding: 8px;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.btn {
+  border: 1px solid var(--vscode-button-border, transparent);
+  border-radius: 2px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font: inherit;
+  color: var(--vscode-button-foreground);
+  background: var(--vscode-button-background);
+}
+
+.btn:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn.danger {
+  color: var(--vscode-errorForeground, #f48771);
+  background: transparent;
+  border-color: var(--vscode-input-border, var(--vscode-panel-border));
+}
+
+.btn.danger:hover:not(:disabled) {
+  background: var(--vscode-inputValidation-errorBackground, rgba(244, 135, 113, 0.15));
+}
+
+.btn.primary {
+  font-weight: 600;
+}
+
+.btn.small {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--vscode-descriptionForeground);
+}
+
+.field input,
+.field select,
+.filter-field input,
+.cell-input {
+  width: 100%;
+  padding: 4px 6px;
+  border: 1px solid var(--vscode-input-border, var(--vscode-panel-border));
+  border-radius: 2px;
+  color: var(--vscode-input-foreground, var(--vscode-foreground));
+  background: var(--vscode-input-background);
+  font: inherit;
+}
+
+.field input:focus,
+.field select:focus,
+.filter-field input:focus,
+.cell-input:focus {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: -1px;
+}
+
+.field input.readonly,
+.readonly {
+  opacity: 0.75;
+  cursor: default;
+}
+
+.filter-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-field input {
+  width: 260px;
+}
+
+.split {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 12px;
+  min-height: 100%;
+  height: 100%;
+}
+
+.split-left {
+  border-right: 1px solid var(--vscode-panel-border, var(--vscode-widget-border));
+  padding-right: 10px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.split-right {
+  min-width: 0;
+  overflow: auto;
+}
+
+.meter-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  flex: 1;
+}
+
+.list-item {
+  width: 100%;
+  text-align: left;
+  border: none;
+  border-radius: 2px;
+  padding: 8px;
+  margin-bottom: 2px;
+  cursor: pointer;
+  background: transparent;
+  color: var(--vscode-foreground);
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.list-item:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.list-item.active {
+  background: var(--vscode-list-activeSelectionBackground);
+  color: var(--vscode-list-activeSelectionForeground);
+}
+
+.list-primary {
+  font-weight: 600;
+}
+
+.list-secondary {
+  font-size: 11px;
+  opacity: 0.85;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.datatable {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.table-scroll {
+  overflow: auto;
+  border: 1px solid var(--vscode-panel-border, var(--vscode-widget-border));
+  max-height: min(60vh, 560px);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+th,
+td {
+  border-bottom: 1px solid var(--vscode-panel-border, var(--vscode-widget-border));
+  padding: 4px 6px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--vscode-sideBar-background, var(--vscode-editor-background));
+  font-weight: 600;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+td.empty {
+  text-align: center;
+  color: var(--vscode-descriptionForeground);
+  padding: 16px;
+}
+
+tr.selected {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.col-check {
+  width: 36px;
+  text-align: center;
+}
+
+.col-actions {
+  width: 72px;
+}
+
+.cell-input {
+  border-color: transparent;
+  background: transparent;
+  padding: 2px 4px;
+}
+
+.cell-input:hover,
+.cell-input:focus {
+  border-color: var(--vscode-input-border, var(--vscode-panel-border));
+  background: var(--vscode-input-background);
+}
+
+.json-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+  min-height: 0;
+}
+
+.cm-host {
+  flex: 1;
+  min-height: 320px;
+  overflow: hidden;
+}
+
+.cm-host .cm-editor {
+  height: 100%;
+}
+
+.error-banner {
+  padding: 8px 10px;
+  border: 1px solid var(--vscode-inputValidation-errorBorder, #f48771);
+  background: var(--vscode-inputValidation-errorBackground, rgba(244, 135, 113, 0.12));
+  color: var(--vscode-errorForeground, #f48771);
+  font-size: 12px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+@media (max-width: 800px) {
+  .split {
+    grid-template-columns: 1fr;
+  }
+
+  .split-left {
+    border-right: none;
+    border-bottom: 1px solid var(--vscode-panel-border, var(--vscode-widget-border));
+    padding-right: 0;
+    padding-bottom: 10px;
+    max-height: 220px;
+  }
 }
