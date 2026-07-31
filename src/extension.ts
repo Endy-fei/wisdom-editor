@@ -1,12 +1,12 @@
 import * as vscode from "vscode";
+import { WisdomEditorProvider } from "./wisdomEditorProvider";
+import { openWisdomAsText } from "./openAsText";
 
 export function activate(context: vscode.ExtensionContext): void {
+  context.subscriptions.push(WisdomEditorProvider.register(context));
   context.subscriptions.push(
     vscode.commands.registerCommand("wisdom.openAsText", async (uri?: vscode.Uri) => {
-      const target = uri ?? vscode.window.activeTextEditor?.document.uri;
-      vscode.window.showInformationMessage(
-        `Wisdom openAsText placeholder: ${target?.fsPath ?? "(none)"}`
-      );
+      await openWisdomAsText(uri);
     })
   );
 }
