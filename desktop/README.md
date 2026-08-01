@@ -1,6 +1,6 @@
 # Wisdom Desktop
 
-Windows 桌面版（Tauri 2）。打包与发布说明见仓库根目录 [README.md](../README.md)「二、Windows 桌面软件」。
+Windows 桌面版（Tauri 2）。开发与发版见仓库根目录 [README.md](../README.md)。插件市场文案见 [`marketplace/README.md`](../marketplace/README.md)。
 
 ```bash
 # 在仓库根目录

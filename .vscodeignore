@@ -17,3 +17,7 @@ media/icon-1024.png
 desktop/**
 packages/**
 *.vsix
+# 源码 README 不打进 VSIX；市场说明由 --readme-path marketplace/README.md 注入
+README.md
+.github/**
+scripts/**

@@ -76,7 +76,7 @@
     "watch:ext": "node esbuild.js --watch",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
-    "package": "npm run build && npx @vscode/vsce package --no-dependencies",
+    "package": "npm run build && npx @vscode/vsce package --no-dependencies --readme-path marketplace/README.md",
     "version:set": "node scripts/set-version.mjs",
     "desktop:dev": "npm run tauri dev -w wisdom-desktop",
     "desktop:build": "npm run tauri build -w wisdom-desktop"
