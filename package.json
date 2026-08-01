@@ -14,17 +14,31 @@
     "url": "https://github.com/Endy-fei/wisdom-editor/issues"
   },
   "homepage": "https://github.com/Endy-fei/wisdom-editor#readme",
-  "engines": { "vscode": "^1.85.0" },
-  "categories": ["Other"],
-  "activationEvents": ["onCustomEditor:wisdom.editor"],
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCustomEditor:wisdom.editor"
+  ],
   "main": "./dist/extension.js",
-  "workspaces": ["packages/*", "webview", "desktop"],
+  "workspaces": [
+    "packages/*",
+    "webview",
+    "desktop"
+  ],
   "contributes": {
     "customEditors": [
       {
         "viewType": "wisdom.editor",
         "displayName": "Wisdom 可视化编辑器",
-        "selector": [{ "filenamePattern": "*.wisdom" }],
+        "selector": [
+          {
+            "filenamePattern": "*.wisdom"
+          }
+        ],
         "priority": "default"
       }
     ],
@@ -63,6 +77,7 @@
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "package": "npm run build && npx @vscode/vsce package --no-dependencies",
+    "version:set": "node scripts/set-version.mjs",
     "desktop:dev": "npm run tauri dev -w wisdom-desktop",
     "desktop:build": "npm run tauri build -w wisdom-desktop"
   },

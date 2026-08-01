@@ -85,27 +85,17 @@ code --install-extension wisdom-editor-1.0.0.vsix
 
 ### 4. 发布到扩展市场（可选）
 
-当前 `publisher` 为 `local`，仅适合本地/内部分发。若要上架：
+当前 `publisher` 为 `endy-fei`。
 
-1. 在 [Azure DevOps](https://dev.azure.com/) 创建 Publisher，并在 [Visual Studio Marketplace](https://marketplace.visualstudio.com/manage) 注册发布者
-2. 修改根目录 `package.json`：
-   - `publisher`：改为你的发布者 ID
-   - `version`：语义化版本
-   - 建议补充 `repository`、`license` 等字段
-3. 获取 Personal Access Token（Marketplace 发布权限）
-4. 登录并发布：
+- **Open VSX / Cursor**：由 GitHub Actions 自动发布（需仓库 Secret `OVSX_PAT`，见第三节）
+- **VS Marketplace**：暂不自动化；在网页手动上传 VSIX：  
+  https://marketplace.visualstudio.com/manage/publishers/endy-fei
+
+本地也可：
 
 ```bash
-npx @vscode/vsce login <你的publisher>
-npx @vscode/vsce publish --no-dependencies
-```
-
-也可只打包后，在 Marketplace 网页手动上传 `.vsix`。
-
-**Open VSX**（部分 Cursor / 开源市场）：
-
-```bash
-npx ovsx publish wisdom-editor-1.0.0.vsix -p <OpenVSX_Token>
+npx ovsx publish wisdom-editor-<version>.vsix -p <OVSX_PAT>
+npx @vscode/vsce publish --no-dependencies -p <VSCE_PAT>   # 可选，需 Azure PAT
 ```
 
 ---
@@ -154,25 +144,58 @@ desktop/src-tauri/target/release/Wisdom Editor.exe
 
 ### 3. 发布 / 分发
 
-桌面端当前面向 **Windows 本机或内部分发**，没有强制应用商店流程。推荐：
+推荐走 **GitHub Actions**（见第三节）：打 `v*` 标签后自动构建安装包并上传到 Releases。
 
-1. 执行 `npm run desktop:build`
-2. 将 `nsis` 目录下的 `*-setup.exe` 发给用户，或放到内网网盘 / GitHub Releases
-3. 用户双击安装；如需文件关联，按安装向导完成安装即可
-4. 发新版时：提高版本号 → 重新打包 → 上传新安装包（覆盖或并列发布均可）
+本地手动分发：
 
-**GitHub Releases 示例流程：**
-
-```bash
-# 1. 改版本号（tauri.conf.json / package.json）
-# 2. 打包
-npm run desktop:build
-
-# 3. 用 gh 创建 Release 并上传安装包（需已登录 gh）
-gh release create v1.0.0 "desktop/src-tauri/target/release/bundle/nsis/*.exe" --title "v1.0.0" --notes "Wisdom Editor Windows 安装包"
-```
+1. `npm run desktop:build`
+2. 将 `nsis` 目录下的 `*-setup.exe` 发给用户
+3. 用户双击安装；安装后自动关联 `.wisdom`
 
 > 首次在本机打包若失败，请确认已安装 [Rust](https://rustup.rs/)、WebView2，以及 Tauri Windows 构建依赖（Visual Studio Build Tools / C++ 工作负载等）。详见 [Tauri 环境说明](https://v2.tauri.app/start/prerequisites/)。
+
+---
+
+## 三、GitHub Actions 自动发版
+
+推送版本标签（或手动运行 workflow）后自动：
+
+1. 同步各包版本号
+2. 测试并打包 VSIX，发布到 **Open VSX**（Cursor 会同步）
+3. 构建 Windows 桌面安装包
+4. 在 GitHub **Releases** 上传 `.vsix` 与 NSIS 安装包
+
+> VS Marketplace 暂不走 CI；发版后从 Release 下载 `.vsix`，到网页手动上传即可。
+
+### 1. 配置仓库 Secrets
+
+路径：仓库 → **Settings → Secrets and variables → Actions**
+
+| Secret | 用途 |
+| --- | --- |
+| `OVSX_PAT` | [Open VSX Access Token](https://open-vsx.org/user-settings/tokens)（已配置则可跳过） |
+
+未配置时跳过 Open VSX 并给出 warning，Release 仍会创建。
+
+### 2. 发版命令
+
+```bash
+# 本地先改版本（可选；CI 也会按 tag 强制同步）
+npm run version:set -- 1.0.1
+
+git add -A
+git commit -m "release: v1.0.1"
+git tag v1.0.1
+git push origin main --tags
+```
+
+也可在 Actions 页手动运行 **Release** workflow，并填入 `v1.0.1`。
+
+### 3. 产物位置
+
+- Release 资源：`wisdom-editor-<version>.vsix`、`Wisdom Editor_<version>_x64-setup.exe`
+- Open VSX / Cursor：`endy-fei.wisdom-editor`
+- VS Marketplace：网页手动上传同上 VSIX
 
 ---
 
