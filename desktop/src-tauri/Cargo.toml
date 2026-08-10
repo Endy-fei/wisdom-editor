@@ -1,6 +1,6 @@
 [package]
 name = "wisdom-desktop"
-version = "1.0.1"
+version = "1.0.2"
 description = "Wisdom desktop editor"
 authors = ["Wisdom Dev"]
 edition = "2021"

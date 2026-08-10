@@ -4,7 +4,7 @@
 
 | 形态 | 说明 |
 | --- | --- |
-| **VS Code / Cursor 插件** | 双击打开 `.wisdom`；发布到 Open VSX / 手动上传 VS Marketplace |
+| **VS Code / Cursor 插件** | 双击打开 `.wisdom`；发布到 Open VSX 与 VS Marketplace |
 | **Windows 桌面软件** | Tauri 2 独立应用；最近文件、拖拽打开、系统文件关联 |
 
 共享包：`packages/wisdom-core`（数据模型）、`packages/editor-ui`（业务界面）。
@@ -56,23 +56,28 @@ npm run package
 ### 本地安装
 
 ```bash
-cursor --install-extension wisdom-editor-1.0.0.vsix
+cursor --install-extension wisdom-editor-1.0.2.vsix
 # 或
-code --install-extension wisdom-editor-1.0.0.vsix
+code --install-extension wisdom-editor-1.0.2.vsix
 ```
 
 安装后执行 **Developer: Reload Window**。
 
 ### 发布
 
-- **Open VSX / Cursor**：GitHub Actions 自动发布（Secret `OVSX_PAT`，见第三节）
-- **VS Marketplace**：GitHub Actions 自动发布（Secret `VSCE_PAT`，见第三节）；也可网页上传：  
-  https://marketplace.visualstudio.com/manage/publishers/endy-fei
+打 `v*` 标签或手动运行 **Release** workflow 后，CI 会自动发布到：
+
+- **Open VSX / Cursor**（Secret `OVSX_PAT`）
+- **VS Marketplace**（Secret `VSCE_PAT`）
+
+本地手动发布：
 
 ```bash
 npx ovsx publish wisdom-editor-<version>.vsix -p <OVSX_PAT>
 npx @vscode/vsce publish --packagePath wisdom-editor-<version>.vsix -p <VSCE_PAT>
 ```
+
+管理页：https://marketplace.visualstudio.com/manage/publishers/endy-fei
 
 ---
 
@@ -107,13 +112,13 @@ desktop/src-tauri/target/release/bundle/nsis/Wisdom Editor_<version>_x64-setup.e
 | Secret | 用途 |
 | --- | --- |
 | `OVSX_PAT` | [Open VSX Access Token](https://open-vsx.org/user-settings/tokens) |
-| `VSCE_PAT` | [Azure DevOps PAT](https://dev.azure.com/)（需 `Marketplace (Publish)` 权限） |
+| `VSCE_PAT` | [Azure DevOps PAT](https://dev.azure.com/myconjure/_usersSettings/tokens)（需 `Marketplace (Manage)`，Organization 选 `All accessible organizations`） |
 
 ```bash
-npm run version:set -- 1.0.1
+npm run version:set -- 1.0.2
 git add -A
-git commit -m "release: v1.0.1"
-git tag v1.0.1
+git commit -m "release: v1.0.2"
+git tag v1.0.2
 git push origin main --tags
 ```
 
