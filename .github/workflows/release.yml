@@ -52,6 +52,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       OVSX_PAT: ${{ secrets.OVSX_PAT }}
+      VSCE_PAT: ${{ secrets.VSCE_PAT }}
     steps:
       - uses: actions/checkout@v4
 
@@ -79,7 +80,6 @@ jobs:
           path: "*.vsix"
           if-no-files-found: error
 
-      # VS Marketplace：暂不自动发布（需 Visa/万事达开 Azure 拿 VSCE_PAT），请网页手动上传。
       - name: Publish to Open VSX
         if: env.OVSX_PAT != ''
         run: npx ovsx publish "wisdom-editor-${{ needs.prepare.outputs.version }}.vsix" -p "$OVSX_PAT"
@@ -87,6 +87,14 @@ jobs:
       - name: Warn if Open VSX secret missing
         if: env.OVSX_PAT == ''
         run: echo "::warning::OVSX_PAT secret is not set; skipped Open VSX publish"
+
+      - name: Publish to VS Marketplace
+        if: env.VSCE_PAT != ''
+        run: npx @vscode/vsce publish --packagePath "wisdom-editor-${{ needs.prepare.outputs.version }}.vsix" -p "$VSCE_PAT"
+
+      - name: Warn if VS Marketplace secret missing
+        if: env.VSCE_PAT == ''
+        run: echo "::warning::VSCE_PAT secret is not set; skipped VS Marketplace publish"
 
   desktop:
     needs: prepare
