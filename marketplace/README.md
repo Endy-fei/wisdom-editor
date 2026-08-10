@@ -1,6 +1,6 @@
 # Wisdom Editor
 
-在 VS Code / Cursor 中可视化编辑 `.wisdom`（gzip + JSON）申校文件：双击即可打开，保存后仍可被原申校软件读取。
+在 VS Code / Cursor 中可视化编辑 `.wisdom`（gzip + JSON）申校文件。双击即可打开，保存后仍可被原申校软件读取。
 
 ## 功能
 
@@ -24,9 +24,9 @@
 
 ## 兼容说明
 
-- 需要 VS Code / Cursor `1.85.0` 及以上
+- 需要 VS Code / Cursor `^1.85.0`
 - 文件格式：gzip 压缩的 UTF-8 JSON，根节点为对象
-- 保存时使用 2 空格缩进序列化后再 gzip
+- 保存时以 2 空格缩进序列化后再 gzip
 - 未知字段透传，便于与原申校软件互通
 
 ## 已知限制
