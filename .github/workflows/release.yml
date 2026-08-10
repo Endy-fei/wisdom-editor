@@ -81,8 +81,14 @@ jobs:
           if-no-files-found: error
 
       - name: Publish to Open VSX
+        id: ovsx_publish
         if: env.OVSX_PAT != ''
+        continue-on-error: true
         run: npx ovsx publish "wisdom-editor-${{ needs.prepare.outputs.version }}.vsix" -p "$OVSX_PAT"
+
+      - name: Warn if Open VSX publish failed
+        if: env.OVSX_PAT != '' && steps.ovsx_publish.outcome == 'failure'
+        run: echo "::warning::Open VSX publish failed (version may already exist). VSIX artifact is still available."
 
       - name: Warn if Open VSX secret missing
         if: env.OVSX_PAT == ''
