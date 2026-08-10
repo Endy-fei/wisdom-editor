@@ -88,9 +88,17 @@ jobs:
         if: env.OVSX_PAT == ''
         run: echo "::warning::OVSX_PAT secret is not set; skipped Open VSX publish"
 
+      # PAT 须由「创建 Marketplace 发布者」的同一 Microsoft 帐户签发（Organization=All accessible organizations，Marketplace=Manage）。
+      # 若在 Entra「默认目录」下创建的 Azure DevOps 组织签发，会 Access Denied；此处不阻断后续 GitHub Release。
       - name: Publish to VS Marketplace
+        id: vsce_publish
         if: env.VSCE_PAT != ''
+        continue-on-error: true
         run: npx @vscode/vsce publish --packagePath "wisdom-editor-${{ needs.prepare.outputs.version }}.vsix" -p "$VSCE_PAT"
+
+      - name: Warn if VS Marketplace publish failed
+        if: env.VSCE_PAT != '' && steps.vsce_publish.outcome == 'failure'
+        run: echo "::warning::VS Marketplace publish failed (check VSCE_PAT identity/scopes). VSIX artifact is still available."
 
       - name: Warn if VS Marketplace secret missing
         if: env.VSCE_PAT == ''
@@ -133,6 +141,7 @@ jobs:
 
   github-release:
     needs: [prepare, extension, desktop]
+    if: ${{ always() && needs.prepare.result == 'success' && needs.extension.result == 'success' && needs.desktop.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Download VSIX

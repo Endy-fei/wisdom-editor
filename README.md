@@ -112,7 +112,7 @@ desktop/src-tauri/target/release/bundle/nsis/Wisdom Editor_<version>_x64-setup.e
 | Secret | 用途 |
 | --- | --- |
 | `OVSX_PAT` | [Open VSX Access Token](https://open-vsx.org/user-settings/tokens) |
-| `VSCE_PAT` | [Azure DevOps PAT](https://dev.azure.com/myconjure/_usersSettings/tokens)（需 `Marketplace (Manage)`，Organization 选 `All accessible organizations`） |
+| `VSCE_PAT` | [Azure DevOps PAT](https://dev.azure.com/)（`Marketplace (Manage)` + `All accessible organizations`）。须用**创建 Marketplace 发布者**的同一 Microsoft 帐户签发；在 Entra「默认目录」下建的组织签发通常会 Access Denied |
 
 ```bash
 npm run version:set -- 1.0.2
