@@ -2,9 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { json, jsonParseLinter } from "@codemirror/lang-json";
 import { linter, lintGutter } from "@codemirror/lint";
+import { search } from "@codemirror/search";
+import { EditorState, Prec } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { vscodeDark, vscodeLight } from "@uiw/codemirror-theme-vscode";
 import { applyJsonText, type WisdomRoot } from "@wisdom/core";
+import { createZhSearchPanel } from "../cmSearchPanel";
+import { isDarkTheme } from "../theme";
 
 type Props = {
   data: WisdomRoot;
@@ -13,30 +17,25 @@ type Props = {
   active?: boolean;
 };
 
+/** CodeMirror 内置公告等剩余英文短语 */
+const CM_PHRASES_ZH: Record<string, string> = {
+  "current match": "当前匹配",
+  "on line": "位于行",
+  "Go to line": "转到行",
+  go: "跳转",
+  "replaced match on line $": "已替换第 $ 行的匹配",
+  "replaced $ matches": "已替换 $ 处匹配",
+};
+
 function pretty(data: WisdomRoot): string {
   return JSON.stringify(data, null, 2);
-}
-
-function detectDarkTheme(): boolean {
-  const body = document.body;
-  if (body.classList.contains("vscode-light")) return false;
-  if (
-    body.classList.contains("vscode-dark") ||
-    body.classList.contains("vscode-high-contrast")
-  ) {
-    return true;
-  }
-  return (
-    window.matchMedia?.("(prefers-color-scheme: dark)").matches ??
-    true
-  );
 }
 
 export function JsonTab({ data, onApply, active = true }: Props) {
   const [text, setText] = useState(() => pretty(data));
   const [error, setError] = useState<string | null>(null);
   const [bufferDirty, setBufferDirty] = useState(false);
-  const [isDark, setIsDark] = useState(detectDarkTheme);
+  const [isDark, setIsDark] = useState(isDarkTheme);
 
   // Sync from document when visible, buffer clean — skip stringify while hidden
   useEffect(() => {
@@ -47,7 +46,7 @@ export function JsonTab({ data, onApply, active = true }: Props) {
   }, [data, bufferDirty, active]);
 
   useEffect(() => {
-    const update = () => setIsDark(detectDarkTheme());
+    const update = () => setIsDark(isDarkTheme());
     update();
     const mq = window.matchMedia?.("(prefers-color-scheme: dark)");
     mq?.addEventListener?.("change", update);
@@ -93,49 +92,71 @@ export function JsonTab({ data, onApply, active = true }: Props) {
       lintGutter(),
       linter(jsonParseLinter()),
       EditorView.lineWrapping,
-      keymap.of([
-        {
-          key: "Mod-Enter",
-          run: () => {
-            apply();
-            return true;
+      EditorState.phrases.of(CM_PHRASES_ZH),
+      search({ top: true, createPanel: createZhSearchPanel }),
+      // 避开 VS Code / CodeMirror 默认键位冲突：
+      // Ctrl+Enter = 插入空行；Ctrl+Shift+F = VS Code「在文件中查找」
+      Prec.highest(
+        keymap.of([
+          {
+            key: "Mod-Alt-Enter",
+            run: () => {
+              apply();
+              return true;
+            },
           },
-        },
-        {
-          key: "Mod-Shift-f",
-          run: () => {
-            format();
-            return true;
+          {
+            key: "Mod-Alt-l",
+            run: () => {
+              format();
+              return true;
+            },
           },
-        },
-      ]),
+        ])
+      ),
       EditorView.theme({
-        "&": { height: "100%", fontSize: "13px" },
-        ".cm-scroller": {
-          fontFamily:
-            'var(--vscode-editor-font-family, Consolas, "Courier New", monospace)',
-          lineHeight: "1.5",
+        "&": {
+          height: "100%",
+          fontSize: "13px",
+          backgroundColor: "transparent",
         },
-        ".cm-content": { caretColor: isDark ? "#aeafad" : "#000000" },
+        ".cm-scroller": {
+          fontFamily: 'var(--font-mono), "IBM Plex Mono", Consolas, monospace',
+          lineHeight: "1.55",
+        },
+        ".cm-gutters": {
+          backgroundColor: "transparent",
+          borderRight: "1px solid var(--line)",
+          color: "var(--text-mute)",
+        },
+        ".cm-activeLineGutter": {
+          backgroundColor: "var(--mint-hover-bg)",
+        },
+        ".cm-content": { caretColor: "var(--mint)" },
         "&.cm-focused .cm-cursor": {
-          borderLeftColor: isDark ? "#aeafad" : "#000000",
+          borderLeftColor: "var(--mint)",
+        },
+        "&.cm-focused .cm-selectionBackground, .cm-selectionBackground": {
+          backgroundColor: "var(--mint-soft) !important",
         },
       }),
     ],
-    [apply, format, isDark]
+    [apply, format]
   );
 
   return (
     <div className={`json-tab${active ? "" : " tab-panel-hidden"}`}>
       <div className="toolbar">
-        <button type="button" className="btn primary" onClick={apply}>
+        <button type="button" className="btn primary" onClick={apply} title="Ctrl+Alt+Enter">
           应用到文档
         </button>
-        <button type="button" className="btn" onClick={format}>
+        <button type="button" className="btn" onClick={format} title="Ctrl+Alt+L">
           格式化
         </button>
         {bufferDirty && <span className="dirty-badge">未应用</span>}
-        <span className="muted">Ctrl/⌘+Enter 应用 · Ctrl/⌘+Shift+F 格式化 · 实时语法检查</span>
+        <span className="muted">
+          Ctrl+F 查找 · Ctrl+Alt+Enter 应用 · Ctrl+Alt+L 格式化 · 实时语法检查
+        </span>
       </div>
       {error && <div className="error-banner">JSON 错误：{error}</div>}
       <div className="cm-host">

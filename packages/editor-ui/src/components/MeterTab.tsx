@@ -14,7 +14,21 @@ type Props = {
   onChange: (next: WisdomRoot) => void;
 };
 
-type FieldDef = { key: string; label: string; kind?: "text" | "number" | "boolean" };
+type EnumOption = { value: number; label: string };
+
+type FieldDef = {
+  key: string;
+  label: string;
+  kind?: "text" | "number" | "boolean" | "enum";
+  options?: EnumOption[];
+};
+
+/** 相别 Phase：与业务枚举一致 */
+const PHASE_OPTIONS: EnumOption[] = [
+  { value: 0, label: "单相" },
+  { value: 1, label: "三相四线" },
+  { value: 2, label: "三相三线" },
+];
 
 const METER_FIELDS: FieldDef[] = [
   { key: "isCheck", label: "是否检定", kind: "boolean" },
@@ -24,7 +38,7 @@ const METER_FIELDS: FieldDef[] = [
   { key: "MeterAddr", label: "表地址" },
   { key: "MeterAssetCoding", label: "资产编码" },
   { key: "MeterBatch", label: "批次" },
-  { key: "MeterTS", label: "条码/TS" },
+  { key: "MeterTS", label: "TS" },
   { key: "Factory", label: "制造厂" },
   { key: "MeterLevel", label: "等级" },
   { key: "Un", label: "额定电压 Un" },
@@ -39,11 +53,17 @@ const METER_FIELDS: FieldDef[] = [
   { key: "ReactivePulseConstant", label: "无功脉冲常数" },
   { key: "ActivePowerAccuracyClass", label: "有功准确度", kind: "number" },
   { key: "ReactivePowerAccuracyClass", label: "无功准确度", kind: "number" },
-  { key: "Phase", label: "相别", kind: "number" },
+  { key: "Phase", label: "相别", kind: "enum", options: PHASE_OPTIONS },
   { key: "MeterProtocol", label: "协议", kind: "number" },
   { key: "MeterSort", label: "类别", kind: "number" },
   { key: "MeterType", label: "类型", kind: "number" },
 ];
+
+function enumSelectValue(raw: unknown, options: EnumOption[]): string {
+  const n = Number(raw);
+  if (!Number.isNaN(n) && options.some((o) => o.value === n)) return String(n);
+  return String(options[0]?.value ?? 0);
+}
 
 const OTHER_FIELDS: FieldDef[] = [
   { key: "BarCode", label: "条码 BarCode" },
@@ -60,6 +80,17 @@ function nextSeat(list: MeterInfo[]): number {
   return max + 1;
 }
 
+function seatNumericKey(seat: unknown): number {
+  const n = Number(String(seat ?? "").trim());
+  return Number.isNaN(n) ? Number.POSITIVE_INFINITY : n;
+}
+
+function sortBySeat(list: MeterInfo[]): MeterInfo[] {
+  return [...list].sort(
+    (a, b) => seatNumericKey(a.MeterSeat) - seatNumericKey(b.MeterSeat)
+  );
+}
+
 function parseValue(raw: string, kind: FieldDef["kind"], previous: unknown): unknown {
   if (kind === "boolean") {
     return raw === "true" || raw === "1";
@@ -74,17 +105,18 @@ function parseValue(raw: string, kind: FieldDef["kind"], previous: unknown): unk
 
 export function MeterTab({ data, templates, onChange }: Props) {
   const meters = data.MeterInfoList ?? [];
+  const sortedMeters = useMemo(() => sortBySeat(meters), [meters]);
   const [selectedId, setSelectedId] = useState<string>("");
 
   useEffect(() => {
-    if (!selectedId && meters[0]?.ID) {
-      setSelectedId(meters[0].ID);
+    if (!selectedId && sortedMeters[0]?.ID) {
+      setSelectedId(sortedMeters[0].ID);
       return;
     }
-    if (selectedId && !meters.some((m) => m.ID === selectedId)) {
-      setSelectedId(meters[0]?.ID ?? "");
+    if (selectedId && !sortedMeters.some((m) => m.ID === selectedId)) {
+      setSelectedId(sortedMeters[0]?.ID ?? "");
     }
-  }, [meters, selectedId]);
+  }, [sortedMeters, selectedId]);
 
   const selected = useMemo(
     () => meters.find((m) => m.ID === selectedId) ?? null,
@@ -178,7 +210,7 @@ export function MeterTab({ data, templates, onChange }: Props) {
           </button>
         </div>
         <ul className="meter-list">
-          {meters.map((m) => (
+          {sortedMeters.map((m) => (
             <li key={m.ID}>
               <button
                 type="button"
@@ -194,7 +226,7 @@ export function MeterTab({ data, templates, onChange }: Props) {
               </button>
             </li>
           ))}
-          {meters.length === 0 && <li className="muted pad">暂无电表，请新增</li>}
+          {sortedMeters.length === 0 && <li className="muted pad">暂无电表，请新增</li>}
         </ul>
       </aside>
       <section className="split-right">
@@ -215,6 +247,19 @@ export function MeterTab({ data, templates, onChange }: Props) {
                     >
                       <option value="true">是</option>
                       <option value="false">否</option>
+                    </select>
+                  ) : f.kind === "enum" && f.options ? (
+                    <select
+                      value={enumSelectValue(selected[f.key], f.options)}
+                      onChange={(e) =>
+                        updateMeter(f.key, parseValue(e.target.value, "number", selected[f.key]))
+                      }
+                    >
+                      {f.options.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
                     </select>
                   ) : (
                     <DeferredInput

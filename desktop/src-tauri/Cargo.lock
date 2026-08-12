@@ -4382,7 +4382,7 @@ dependencies = [
 
 [[package]]
 name = "wisdom-desktop"
-version = "1.0.4"
+version = "1.0.5"
 dependencies = [
  "flate2",
  "serde",

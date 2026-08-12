@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import type { WisdomRoot, WisdomTemplates } from "@wisdom/core";
 import type { HostBridge, RecentItem } from "./bridge";
+import { isDarkTheme, observeHostTheme, syncHostThemeClass } from "./theme";
+import { applyUiStyle } from "./uiStyles";
 import { MeterTab } from "./components/MeterTab";
 import { SchemeTab } from "./components/SchemeTab";
 import { TestItemTab } from "./components/TestItemTab";
@@ -29,6 +31,13 @@ export function WisdomEditorApp({ bridge }: { bridge: HostBridge }) {
   const [welcome, setWelcome] = useState(false);
   const [recent, setRecent] = useState<RecentItem[]>([]);
   const [savedFlash, setSavedFlash] = useState(false);
+
+  useEffect(() => syncHostThemeClass(), []);
+
+  useEffect(() => {
+    applyUiStyle(isDarkTheme());
+    return observeHostTheme(() => applyUiStyle(isDarkTheme()));
+  }, []);
 
   useEffect(() => {
     const unsubscribe = bridge.subscribe((msg) => {
@@ -75,8 +84,10 @@ export function WisdomEditorApp({ bridge }: { bridge: HostBridge }) {
     return (
       <div className="page welcome-page">
         <div className="welcome">
+          <div className="brand-mark" aria-hidden />
+          <p className="welcome-kicker">Wisdom Lab</p>
           <h1 className="welcome-title">Wisdom 编辑器</h1>
-          <p className="welcome-text">请打开 .wisdom 文件</p>
+          <p className="welcome-text">打开 .wisdom 申校文件，开始编辑电表、方案与结果明细。</p>
           {bridge.openFile && (
             <button type="button" className="btn primary" onClick={() => bridge.openFile?.()}>
               打开文件…
@@ -106,12 +117,13 @@ export function WisdomEditorApp({ bridge }: { bridge: HostBridge }) {
   }
 
   if (!data || !templates) {
-    return <div className="page">加载中…</div>;
+    return <div className="page loading-page">加载中</div>;
   }
 
   return (
     <div className="page">
       <header className="top">
+        <div className="brand-mark" aria-hidden />
         <span className="title">{fileName || "未命名.wisdom"}</span>
         {dirty && <span className="dirty-badge">已修改</span>}
         {savedFlash && <span className="saved-badge">已保存</span>}
@@ -136,7 +148,6 @@ export function WisdomEditorApp({ bridge }: { bridge: HostBridge }) {
         ))}
       </nav>
       <main className="main">
-        {/* Business tabs mount on demand. Only JSON stays mounted to keep its draft buffer. */}
         {tab === "电表信息" && (
           <div className="tab-panel">
             <MeterTab data={data} templates={templates} onChange={commit} />

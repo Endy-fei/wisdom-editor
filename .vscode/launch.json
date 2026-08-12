@@ -11,7 +11,7 @@
         "${workspaceFolder}/samples"
       ],
       "outFiles": ["${workspaceFolder}/dist/**/*.js"],
-      "preLaunchTask": "npm: build"
+      "preLaunchTask": "watch"
     }
   ]
 }

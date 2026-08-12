@@ -31,14 +31,54 @@ export class WisdomEditorProvider implements vscode.CustomEditorProvider<WisdomD
 
   /** document URI → active webview panel */
   private readonly panels = new Map<string, vscode.WebviewPanel>();
+  /** development: force webview asset cache bust on reload */
+  private webviewCacheBust = Date.now();
 
   constructor(private readonly context: vscode.ExtensionContext) {}
 
   static register(context: vscode.ExtensionContext): vscode.Disposable {
     const provider = new WisdomEditorProvider(context);
-    return vscode.window.registerCustomEditorProvider("wisdom.editor", provider, {
-      webviewOptions: { retainContextWhenHidden: true },
-      supportsMultipleEditorsPerDocument: false,
+    const disposables: vscode.Disposable[] = [
+      vscode.window.registerCustomEditorProvider("wisdom.editor", provider, {
+        webviewOptions: { retainContextWhenHidden: true },
+        supportsMultipleEditorsPerDocument: false,
+      }),
+    ];
+
+    if (context.extensionMode === vscode.ExtensionMode.Development) {
+      disposables.push(provider.watchWebviewAssets());
+    }
+
+    return vscode.Disposable.from(...disposables);
+  }
+
+  /** Watch dist/webview and hot-reload open panels while debugging. */
+  private watchWebviewAssets(): vscode.Disposable {
+    const pattern = new vscode.RelativePattern(
+      vscode.Uri.joinPath(this.context.extensionUri, "dist", "webview"),
+      "**/*"
+    );
+    const watcher = vscode.workspace.createFileSystemWatcher(pattern);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const scheduleReload = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        this.webviewCacheBust = Date.now();
+        for (const panel of this.panels.values()) {
+          panel.webview.html = this.getReactHtml(panel.webview);
+        }
+      }, 200);
+    };
+
+    watcher.onDidChange(scheduleReload);
+    watcher.onDidCreate(scheduleReload);
+    watcher.onDidDelete(scheduleReload);
+
+    return vscode.Disposable.from(watcher, {
+      dispose: () => {
+        if (timer) clearTimeout(timer);
+      },
     });
   }
 
@@ -166,18 +206,31 @@ export class WisdomEditorProvider implements vscode.CustomEditorProvider<WisdomD
 
   private getReactHtml(webview: vscode.Webview): string {
     const base = vscode.Uri.joinPath(this.context.extensionUri, "dist", "webview");
-    const scriptUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(base, "assets", "index.js")
-    );
-    const styleUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(base, "assets", "index.css")
-    );
-    const csp = `default-src 'none'; img-src ${webview.cspSource} https:; script-src ${webview.cspSource}; style-src ${webview.cspSource} 'unsafe-inline';`;
+    const bust =
+      this.context.extensionMode === vscode.ExtensionMode.Development
+        ? `t=${this.webviewCacheBust}`
+        : "";
+    const scriptUri = webview
+      .asWebviewUri(vscode.Uri.joinPath(base, "assets", "index.js"))
+      .with({ query: bust });
+    const styleUri = webview
+      .asWebviewUri(vscode.Uri.joinPath(base, "assets", "index.css"))
+      .with({ query: bust });
+    const csp = [
+      "default-src 'none'",
+      `img-src ${webview.cspSource} https: data:`,
+      `script-src ${webview.cspSource}`,
+      `style-src ${webview.cspSource} 'unsafe-inline' https://fonts.googleapis.com`,
+      "font-src https://fonts.gstatic.com data:",
+      "connect-src https://fonts.googleapis.com https://fonts.gstatic.com",
+    ].join("; ");
     return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy" content="${csp}" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="${styleUri}" />
 </head>
 <body>
