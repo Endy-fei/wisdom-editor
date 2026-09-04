@@ -91,7 +91,7 @@ export function JsonTab({ data, onApply, active = true }: Props) {
       json(),
       lintGutter(),
       linter(jsonParseLinter()),
-      EditorView.lineWrapping,
+      // 关闭自动换行：统一行高，避免虚拟滚动在拖动滚动条时高度估算漂移导致「拖不动/偏慢」
       EditorState.phrases.of(CM_PHRASES_ZH),
       search({ top: true, createPanel: createZhSearchPanel }),
       // 避开 VS Code / CodeMirror 默认键位冲突：
@@ -123,6 +123,7 @@ export function JsonTab({ data, onApply, active = true }: Props) {
         ".cm-scroller": {
           fontFamily: 'var(--font-mono), "IBM Plex Mono", Consolas, monospace',
           lineHeight: "1.55",
+          overflowAnchor: "none",
         },
         ".cm-gutters": {
           backgroundColor: "transparent",

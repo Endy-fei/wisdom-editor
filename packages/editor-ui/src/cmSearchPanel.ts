@@ -9,6 +9,7 @@ import {
   selectMatches,
   setSearchQuery,
 } from "@codemirror/search";
+import type { EditorState } from "@codemirror/state";
 import { EditorView, runScopeHandlers, type Panel } from "@codemirror/view";
 
 type QueryFields = {
@@ -18,6 +19,9 @@ type QueryFields = {
   regexp: HTMLInputElement;
   wholeWord: HTMLInputElement;
 };
+
+/** 避免超大文档全量扫描；超过后显示 N+ */
+const MATCH_COUNT_LIMIT = 9999;
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -106,14 +110,82 @@ function buildFields(query: SearchQuery): QueryFields {
   return { search, replace, caseSensitive, regexp, wholeWord };
 }
 
+function countMatches(
+  state: EditorState,
+  query: SearchQuery
+): { current: number; total: number; capped: boolean } {
+  if (!query.valid || !query.search) {
+    return { current: 0, total: 0, capped: false };
+  }
+
+  const cursor = query.getCursor(state);
+  const { from, to } = state.selection.main;
+  let total = 0;
+  let current = 0;
+  let item = cursor.next();
+
+  while (!item.done) {
+    total++;
+    if (item.value.from === from && item.value.to === to) {
+      current = total;
+    }
+    if (total >= MATCH_COUNT_LIMIT) {
+      const more = cursor.next();
+      return { current, total, capped: !more.done };
+    }
+    item = cursor.next();
+  }
+
+  return { current, total, capped: false };
+}
+
+function formatMatchCount(info: {
+  current: number;
+  total: number;
+  capped: boolean;
+}): string {
+  if (info.total === 0) return "0 处";
+  const totalLabel = info.capped ? `${info.total}+` : String(info.total);
+  if (info.current > 0) return `${info.current} / ${totalLabel}`;
+  return `共 ${totalLabel} 处`;
+}
+
 /**
- * 自定义查找/替换面板：中文文案 + 双行对齐布局。
+ * 自定义查找/替换面板：中文文案 + 双行对齐布局 + 匹配计数。
  * 满足 CodeMirror search createPanel 约定（含 main-field）。
  */
 export function createZhSearchPanel(view: EditorView): Panel {
   const query = getSearchQuery(view.state);
   const fields = buildFields(query);
   let current = query;
+
+  const matchCount = el("span", {
+    className: "wisdom-search-count",
+    "aria-live": "polite",
+  });
+
+  const refreshCount = (state = view.state) => {
+    const q = getSearchQuery(state);
+    if (!q.search) {
+      matchCount.textContent = "";
+      matchCount.title = "";
+      return;
+    }
+    if (!q.valid) {
+      matchCount.textContent = "无效";
+      matchCount.title = "正则表达式无效";
+      return;
+    }
+    const info = countMatches(state, q);
+    matchCount.textContent = formatMatchCount(info);
+    matchCount.title = info.capped
+      ? `匹配数超过 ${MATCH_COUNT_LIMIT}，已截断显示`
+      : info.total === 0
+        ? "无匹配"
+        : info.current > 0
+          ? `第 ${info.current} 处，共 ${info.total} 处`
+          : `共 ${info.total} 处匹配`;
+  };
 
   const commit = () => {
     const next = new SearchQuery({
@@ -127,6 +199,7 @@ export function createZhSearchPanel(view: EditorView): Panel {
       current = next;
       view.dispatch({ effects: setSearchQuery.of(next) });
     }
+    refreshCount();
   };
 
   for (const input of [fields.search, fields.replace]) {
@@ -146,7 +219,8 @@ export function createZhSearchPanel(view: EditorView): Panel {
       { className: "wisdom-search-actions" },
       btn("下一个", () => findNext(view)),
       btn("上一个", () => findPrevious(view)),
-      btn("全选", () => selectMatches(view))
+      btn("全选", () => selectMatches(view)),
+      matchCount
     ),
     el(
       "div",
@@ -213,8 +287,10 @@ export function createZhSearchPanel(view: EditorView): Panel {
     top: true,
     mount() {
       fields.search.select();
+      refreshCount();
     },
     update(update) {
+      let queryChanged = false;
       for (const tr of update.transactions) {
         for (const effect of tr.effects) {
           if (effect.is(setSearchQuery) && !effect.value.eq(current)) {
@@ -224,8 +300,12 @@ export function createZhSearchPanel(view: EditorView): Panel {
             fields.caseSensitive.checked = current.caseSensitive;
             fields.regexp.checked = current.regexp;
             fields.wholeWord.checked = current.wholeWord;
+            queryChanged = true;
           }
         }
+      }
+      if (queryChanged || update.docChanged || update.selectionSet) {
+        refreshCount(update.state);
       }
     },
   };
