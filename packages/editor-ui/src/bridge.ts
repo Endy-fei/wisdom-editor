@@ -1,6 +1,6 @@
 import type { WisdomRoot, WisdomTemplates } from "@wisdom/core";
 
-export type RecentItem = { path: string; name: string };
+export type RecentItem = { path: string; name: string; exists?: boolean };
 
 export type HostMessage =
   | {
@@ -13,7 +13,7 @@ export type HostMessage =
     }
   | { type: "saved" }
   | { type: "warning"; text: string }
-  | { type: "welcome"; recent: RecentItem[] };
+  | { type: "welcome"; recent: RecentItem[]; missingPath?: string };
 
 export type HostBridge = {
   ready(): void;
@@ -21,4 +21,6 @@ export type HostBridge = {
   subscribe(handler: (msg: HostMessage) => void): () => void;
   openRecent?(path: string): void;
   openFile?(): void;
+  removeRecent?(path: string): void;
+  restoreRecent?(path: string): void;
 };

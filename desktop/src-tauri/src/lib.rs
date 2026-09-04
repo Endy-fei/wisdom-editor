@@ -56,6 +56,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::get_startup_state,
             commands::list_recent,
+            commands::remove_recent,
             commands::open_wisdom_path,
             commands::open_wisdom_dialog,
             commands::save_wisdom,

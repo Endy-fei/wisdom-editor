@@ -218,19 +218,16 @@ export class WisdomEditorProvider implements vscode.CustomEditorProvider<WisdomD
       .with({ query: bust });
     const csp = [
       "default-src 'none'",
-      `img-src ${webview.cspSource} https: data:`,
+      `img-src ${webview.cspSource} data:`,
       `script-src ${webview.cspSource}`,
-      `style-src ${webview.cspSource} 'unsafe-inline' https://fonts.googleapis.com`,
-      "font-src https://fonts.gstatic.com data:",
-      "connect-src https://fonts.googleapis.com https://fonts.gstatic.com",
+      `style-src ${webview.cspSource} 'unsafe-inline'`,
+      `font-src ${webview.cspSource} data:`,
     ].join("; ");
     return `<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy" content="${csp}" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="${styleUri}" />
 </head>
 <body>

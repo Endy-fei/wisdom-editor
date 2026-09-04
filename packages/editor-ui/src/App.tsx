@@ -21,6 +21,10 @@ const TABS = [
 
 type TabName = (typeof TABS)[number];
 
+function isMissingRecent(item: RecentItem): boolean {
+  return item.exists === false;
+}
+
 export function WisdomEditorApp({ bridge }: { bridge: HostBridge }) {
   const [tab, setTab] = useState<TabName>("电表信息");
   const [data, setData] = useState<WisdomRoot | null>(null);
@@ -31,6 +35,7 @@ export function WisdomEditorApp({ bridge }: { bridge: HostBridge }) {
   const [welcome, setWelcome] = useState(false);
   const [recent, setRecent] = useState<RecentItem[]>([]);
   const [savedFlash, setSavedFlash] = useState(false);
+  const [missingItem, setMissingItem] = useState<RecentItem | null>(null);
 
   useEffect(() => syncHostThemeClass(), []);
 
@@ -48,12 +53,27 @@ export function WisdomEditorApp({ bridge }: { bridge: HostBridge }) {
         setWarnings(Array.isArray(msg.warnings) ? msg.warnings : []);
         setDirty(false);
         setWelcome(false);
+        setMissingItem(null);
       } else if (msg.type === "welcome") {
         setWelcome(true);
-        setRecent(Array.isArray(msg.recent) ? msg.recent : []);
+        const list = Array.isArray(msg.recent) ? msg.recent : [];
+        setRecent(list);
         setData(null);
         setTemplates(null);
         setDirty(false);
+        if (msg.missingPath) {
+          const found = list.find((item) => item.path === msg.missingPath);
+          setMissingItem(
+            found ?? {
+              path: msg.missingPath,
+              name: msg.missingPath.split(/[/\\]/).pop() || msg.missingPath,
+              exists: false,
+            }
+          );
+        } else {
+          setMissingItem(null);
+        }
+        setWarnings([]);
       } else if (msg.type === "warning" && typeof msg.text === "string") {
         setWarnings((prev) => [...prev, msg.text]);
       } else if (msg.type === "saved") {
@@ -64,6 +84,15 @@ export function WisdomEditorApp({ bridge }: { bridge: HostBridge }) {
     bridge.ready();
     return unsubscribe;
   }, [bridge]);
+
+  useEffect(() => {
+    if (!missingItem) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMissingItem(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [missingItem]);
 
   useEffect(() => {
     if (!savedFlash) return;
@@ -88,6 +117,13 @@ export function WisdomEditorApp({ bridge }: { bridge: HostBridge }) {
           <p className="welcome-kicker">Wisdom Lab</p>
           <h1 className="welcome-title">Wisdom 编辑器</h1>
           <p className="welcome-text">打开 .wisdom 申校文件，开始编辑电表、方案与结果明细。</p>
+          {warnings.length > 0 && (
+            <div className="error-banner" role="alert">
+              {warnings.map((w, i) => (
+                <div key={`${i}-${w}`}>{w}</div>
+              ))}
+            </div>
+          )}
           {bridge.openFile && (
             <button type="button" className="btn primary" onClick={() => bridge.openFile?.()}>
               打开文件…
@@ -97,21 +133,94 @@ export function WisdomEditorApp({ bridge }: { bridge: HostBridge }) {
             <div className="welcome-recent">
               <h2 className="section-title">最近打开</h2>
               <ul className="welcome-recent-list">
-                {recent.map((item) => (
-                  <li key={item.path}>
-                    <button
-                      type="button"
-                      className="btn"
-                      onClick={() => bridge.openRecent?.(item.path)}
-                    >
-                      {item.name || item.path}
-                    </button>
-                  </li>
-                ))}
+                {recent.map((item) => {
+                  const missing = isMissingRecent(item);
+                  return (
+                    <li key={item.path}>
+                      <button
+                        type="button"
+                        className={
+                          missing
+                            ? "btn welcome-recent-item welcome-recent-item-missing"
+                            : "btn welcome-recent-item"
+                        }
+                        onClick={() => {
+                          if (missing) setMissingItem(item);
+                          else bridge.openRecent?.(item.path);
+                        }}
+                      >
+                        <span className="welcome-recent-row">
+                          <span className="welcome-recent-name">{item.name || item.path}</span>
+                          {missing && <span className="welcome-recent-badge">文件不存在</span>}
+                        </span>
+                        <span className="welcome-recent-path">{item.path}</span>
+                        {missing && (
+                          <span className="welcome-recent-hint">点击以恢复文件或从列表移除</span>
+                        )}
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           )}
         </div>
+        {missingItem && (
+          <div
+            className="welcome-missing-overlay"
+            role="presentation"
+            onClick={() => setMissingItem(null)}
+          >
+            <div
+              className="welcome-missing-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="welcome-missing-title"
+              aria-describedby="welcome-missing-text"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 id="welcome-missing-title" className="welcome-missing-title">
+                找不到文件
+              </h3>
+              <p id="welcome-missing-text" className="welcome-missing-text">
+                「{missingItem.name || missingItem.path}」已不在原路径。请恢复文件，或从最近打开列表中移除。
+              </p>
+              <p className="welcome-missing-path">{missingItem.path}</p>
+              <div className="welcome-missing-actions">
+                {bridge.restoreRecent && (
+                  <button
+                    type="button"
+                    className="btn primary"
+                    autoFocus
+                    onClick={() => {
+                      const path = missingItem.path;
+                      setMissingItem(null);
+                      bridge.restoreRecent?.(path);
+                    }}
+                  >
+                    恢复文件…
+                  </button>
+                )}
+                {bridge.removeRecent && (
+                  <button
+                    type="button"
+                    className="btn danger"
+                    onClick={() => {
+                      const path = missingItem.path;
+                      setMissingItem(null);
+                      bridge.removeRecent?.(path);
+                    }}
+                  >
+                    从列表移除
+                  </button>
+                )}
+                <button type="button" className="btn" onClick={() => setMissingItem(null)}>
+                  取消
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

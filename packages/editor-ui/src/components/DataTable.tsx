@@ -85,7 +85,7 @@ function resolveColumnWidth(
 }
 
 function buildWidths(columns: Column[], rows: JsonObject[]): Record<string, number> {
-  const headerFont = '600 11px "Sora", "IBM Plex Sans", "PingFang SC", sans-serif';
+  const headerFont = '600 11px Inter, "PingFang SC", "Microsoft YaHei", sans-serif';
   const cellFont = '12px "IBM Plex Mono", Consolas, monospace';
   const init: Record<string, number> = {};
   for (const col of columns) {
