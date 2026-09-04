@@ -2,7 +2,7 @@
   "name": "wisdom-editor",
   "displayName": "Wisdom Editor",
   "description": "可视化编辑 .wisdom（gzip+JSON）申校文件",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "publisher": "endy-fei",
   "icon": "media/icon.png",
   "license": "MIT",
