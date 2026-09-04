@@ -40,6 +40,8 @@ function codeToInt(value: unknown): number {
   return Number.isNaN(n) ? Number.POSITIVE_INFINITY : n;
 }
 
+type ItemFilterOption = { code: string; label: string };
+
 function uniqueSortedSeats(values: string[]): string[] {
   return [...new Set(values.filter(Boolean))].sort((a, b) => {
     const na = Number(a);
@@ -49,58 +51,57 @@ function uniqueSortedSeats(values: string[]): string[] {
   });
 }
 
-/** 试验项目去重，按测试项目编号 BH 转 int 排序（无匹配则回退 ItemCode） */
-function uniqueItemsByCode(
-  rows: JsonObject[],
-  testItems: JsonObject[]
-): string[] {
-  const bhByName = new Map<string, number>();
-  for (const item of testItems) {
-    const name = cellText(item.Name);
-    if (!name) continue;
-    const key = codeToInt(item.BH);
-    const prev = bhByName.get(name);
-    if (prev === undefined || key < prev) bhByName.set(name, key);
-  }
-
-  const best = new Map<string, number>();
+/** 按结论 Code 去重；下拉文案任取该 Code 下一条 ItemName */
+function uniqueItemsByCode(rows: JsonObject[]): ItemFilterOption[] {
+  const best = new Map<string, ItemFilterOption>();
   for (const row of rows) {
-    const name = cellText(row.ItemName);
-    if (!name) continue;
-    const code = bhByName.get(name) ?? codeToInt(row.ItemCode);
-    const prev = best.get(name);
-    if (prev === undefined || code < prev) best.set(name, code);
+    const code = cellText(row.Code).trim();
+    if (!code || best.has(code)) continue;
+    best.set(code, { code, label: cellText(row.ItemName) || code });
   }
-  return [...best.entries()]
-    .sort((a, b) => a[1] - b[1] || a[0].localeCompare(b[0], "zh"))
-    .map(([name]) => name);
+  return [...best.values()].sort(
+    (a, b) =>
+      codeToInt(a.code) - codeToInt(b.code) ||
+      a.label.localeCompare(b.label, "zh")
+  );
+}
+
+function sortResultRows(rows: JsonObject[]): JsonObject[] {
+  return [...rows].sort((a, b) => {
+    const codeCmp = codeToInt(a.Code) - codeToInt(b.Code);
+    if (codeCmp !== 0) return codeCmp;
+    const seatA = Number(cellText(a.MeterSeat));
+    const seatB = Number(cellText(b.MeterSeat));
+    if (!Number.isNaN(seatA) && !Number.isNaN(seatB) && seatA !== seatB) {
+      return seatA - seatB;
+    }
+    const nameCmp = cellText(a.ItemName).localeCompare(cellText(b.ItemName), "zh");
+    if (nameCmp !== 0) return nameCmp;
+    return cellText(a.PointName).localeCompare(cellText(b.PointName), "zh");
+  });
 }
 
 export function ResultTab({ data, templates, onChange }: Props) {
-  const [itemName, setItemName] = useState("");
+  const [itemCode, setItemCode] = useState("");
   const [meterSeat, setMeterSeat] = useState("");
   const rows = (data.ResultDetailList ?? []) as JsonObject[];
-  const testItems = (data.TestItemList ?? []) as JsonObject[];
-  const filtered = Boolean(itemName || meterSeat);
+  const filtered = Boolean(itemCode || meterSeat);
 
-  const itemOptions = useMemo(
-    () => uniqueItemsByCode(rows, testItems),
-    [rows, testItems]
-  );
+  const itemOptions = useMemo(() => uniqueItemsByCode(rows), [rows]);
   const seatOptions = useMemo(
     () => uniqueSortedSeats(rows.map((row) => cellText(row.MeterSeat))),
     [rows]
   );
 
-  const visibleRows = useMemo(
-    () =>
-      rows.filter((row) => {
-        if (itemName && cellText(row.ItemName) !== itemName) return false;
-        if (meterSeat && cellText(row.MeterSeat) !== meterSeat) return false;
-        return true;
-      }),
-    [rows, itemName, meterSeat]
-  );
+  const visibleRows = useMemo(() => {
+    const filteredRows = rows.filter((row) => {
+      if (itemCode && cellText(row.Code).trim() !== itemCode) return false;
+      if (meterSeat && cellText(row.MeterSeat) !== meterSeat) return false;
+      return true;
+    });
+    return sortResultRows(filteredRows);
+  }, [rows, itemCode, meterSeat]);
+
 
   const handleChange = (nextVisible: JsonObject[]) => {
     if (!filtered) {
@@ -138,11 +139,11 @@ export function ResultTab({ data, templates, onChange }: Props) {
       <div className="toolbar">
         <label className="filter-field">
           <span>试验项目</span>
-          <select value={itemName} onChange={(e) => setItemName(e.target.value)}>
+          <select value={itemCode} onChange={(e) => setItemCode(e.target.value)}>
             <option value="">全部</option>
             {itemOptions.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
+              <option key={opt.code} value={opt.code}>
+                {opt.label}
               </option>
             ))}
           </select>

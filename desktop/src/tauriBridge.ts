@@ -74,6 +74,12 @@ export class TauriHost {
       openRecent: (path) => {
         void this.openPath(path);
       },
+      removeRecent: (path) => {
+        void this.removeRecent(path);
+      },
+      restoreRecent: (path) => {
+        void this.restoreRecent(path);
+      },
     };
   }
 
@@ -139,14 +145,55 @@ export class TauriHost {
       const result = await invoke<OpenResult>("open_wisdom_path", { path });
       this.applyOpen(result);
     } catch (e) {
+      const recent = await invoke<RecentItem[]>("list_recent").catch(() => []);
+      const missing = recent.some((item) => item.path === path && item.exists === false);
+      if (missing) {
+        this.emit({ type: "welcome", recent, missingPath: path });
+        return;
+      }
       this.emit({
         type: "warning",
         text: `打开失败：${e instanceof Error ? e.message : String(e)}`,
       });
       if (skipConfirm) {
-        const recent = await invoke<RecentItem[]>("list_recent").catch(() => []);
         this.emit({ type: "welcome", recent });
       }
+    }
+  }
+
+  async removeRecent(path: string) {
+    try {
+      const recent = await invoke<RecentItem[]>("remove_recent", { path });
+      this.emit({ type: "welcome", recent });
+    } catch (e) {
+      this.emit({
+        type: "warning",
+        text: `移除失败：${e instanceof Error ? e.message : String(e)}`,
+      });
+    }
+  }
+
+  async restoreRecent(oldPath: string) {
+    if (!(await this.confirmDiscard())) return;
+    try {
+      const result = await invoke<OpenResult>("open_wisdom_path", { path: oldPath });
+      this.applyOpen(result);
+      return;
+    } catch {
+      // File is still missing; ask the user to locate it.
+    }
+    try {
+      const result = await invoke<OpenResult | null>("open_wisdom_dialog");
+      if (!result) return;
+      if (result.path !== oldPath) {
+        await invoke("remove_recent", { path: oldPath }).catch(() => undefined);
+      }
+      this.applyOpen(result);
+    } catch (e) {
+      this.emit({
+        type: "warning",
+        text: `恢复失败：${e instanceof Error ? e.message : String(e)}`,
+      });
     }
   }
 

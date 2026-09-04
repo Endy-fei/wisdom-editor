@@ -71,6 +71,11 @@ pub fn list_recent(app: AppHandle) -> Result<Vec<RecentItem>, String> {
 }
 
 #[tauri::command]
+pub fn remove_recent(app: AppHandle, path: String) -> Result<Vec<RecentItem>, String> {
+    recent::remove_recent(&config_dir(&app)?, &path)
+}
+
+#[tauri::command]
 pub fn open_wisdom_path(app: AppHandle, path: String) -> Result<OpenResult, String> {
     open_path_inner(&app, Path::new(&path))
 }
