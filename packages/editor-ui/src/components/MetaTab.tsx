@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { WisdomRoot } from "@wisdom/core";
 import { DeferredInput } from "./DeferredInput";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 type Props = {
   data: WisdomRoot;
@@ -35,8 +36,23 @@ function mergeMappedWithDrafts(
   return [...mapped, ...drafts];
 }
 
+/** 更新检定员/核验员，并同步 isCheck 表计的 User 为「检定员@核验员」 */
+function applyPersonnel(
+  data: WisdomRoot,
+  patch: { Inspector?: string; Verifier?: string }
+): WisdomRoot {
+  const Inspector = patch.Inspector ?? data.Inspector ?? "";
+  const Verifier = patch.Verifier ?? data.Verifier ?? "";
+  const user = `${Inspector}@${Verifier}`;
+  const MeterInfoList = (data.MeterInfoList ?? []).map((m) =>
+    m.isCheck === true ? { ...m, User: user } : m
+  );
+  return { ...data, Inspector, Verifier, MeterInfoList };
+}
+
 export function MetaTab({ data, onChange }: Props) {
   const [rows, setRows] = useState<CertRow[]>(() => certToRows(data.CertificateCode));
+  const [pendingDeleteIndex, setPendingDeleteIndex] = useState<number | null>(null);
 
   useEffect(() => {
     setRows((prev) => mergeMappedWithDrafts(data.CertificateCode, prev));
@@ -61,16 +77,24 @@ export function MetaTab({ data, onChange }: Props) {
   };
 
   const deleteRow = (index: number) => {
-    const next = rows.filter((_, i) => i !== index);
     const removed = rows[index];
     // Deleting a draft never needs a host commit.
-    if (!removed.key.trim()) {
-      setRows(next);
+    if (!removed?.key.trim()) {
+      setRows((prev) => prev.filter((_, i) => i !== index));
       return;
     }
-    if (!window.confirm(`确认删除证书映射「${removed.key}」？`)) return;
+    setPendingDeleteIndex(index);
+  };
+
+  const confirmDeleteRow = () => {
+    if (pendingDeleteIndex === null) return;
+    const next = rows.filter((_, i) => i !== pendingDeleteIndex);
+    setPendingDeleteIndex(null);
     commitRows(next);
   };
+
+  const pendingKey =
+    pendingDeleteIndex === null ? "" : rows[pendingDeleteIndex]?.key ?? "";
 
   return (
     <div className="stack">
@@ -81,14 +105,14 @@ export function MetaTab({ data, onChange }: Props) {
             <span>检定员 Inspector</span>
             <DeferredInput
               value={data.Inspector ?? ""}
-              onCommit={(raw) => onChange({ ...data, Inspector: raw })}
+              onCommit={(raw) => onChange(applyPersonnel(data, { Inspector: raw }))}
             />
           </label>
           <label className="field">
             <span>核验员 Verifier</span>
             <DeferredInput
               value={data.Verifier ?? ""}
-              onCommit={(raw) => onChange({ ...data, Verifier: raw })}
+              onCommit={(raw) => onChange(applyPersonnel(data, { Verifier: raw }))}
             />
           </label>
           <label className="field">
@@ -180,6 +204,14 @@ export function MetaTab({ data, onChange }: Props) {
           </table>
         </div>
       </section>
+
+      <ConfirmDialog
+        open={pendingDeleteIndex !== null}
+        title="删除证书映射"
+        message={`确认删除证书映射「${pendingKey}」？`}
+        onConfirm={confirmDeleteRow}
+        onCancel={() => setPendingDeleteIndex(null)}
+      />
     </div>
   );
 }

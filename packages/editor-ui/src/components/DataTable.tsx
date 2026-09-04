@@ -7,6 +7,7 @@ import {
 } from "react";
 import type { JsonObject } from "@wisdom/core";
 import { DeferredInput } from "./DeferredInput";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 export type Column = {
   key: string;
@@ -133,6 +134,7 @@ export function DataTable({
 }: Props) {
   const [localRows, setLocalRows] = useState(rows);
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [widths, setWidths] = useState<Record<string, number>>(() =>
     buildWidths(columns, rows)
   );
@@ -288,10 +290,14 @@ export function DataTable({
 
   const deleteSelected = () => {
     if (selected.size === 0) return;
-    if (!window.confirm(`确认删除选中的 ${selected.size} 行？`)) return;
+    setConfirmDelete(true);
+  };
+
+  const confirmDeleteSelected = () => {
     const next = localRows.filter((_, i) => !selected.has(i));
     setLocalRows(next);
     setSelected(new Set());
+    setConfirmDelete(false);
     onChange(next);
   };
 
@@ -400,6 +406,13 @@ export function DataTable({
           </tbody>
         </table>
       </div>
+      <ConfirmDialog
+        open={confirmDelete}
+        title="删除行"
+        message={`确认删除选中的 ${selected.size} 行？`}
+        onConfirm={confirmDeleteSelected}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </div>
   );
 }

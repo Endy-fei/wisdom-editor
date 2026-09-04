@@ -487,6 +487,50 @@ body {
   font-size: 12px;
 }
 
+/* ——— Confirm dialog (webview-safe) ——— */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.confirm-dialog {
+  width: min(400px, 100%);
+  padding: 18px 18px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--line-strong);
+  background: var(--panel);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+}
+
+.confirm-title {
+  margin: 0 0 8px;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.confirm-message {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-dim);
+  white-space: pre-wrap;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
 .kbd {
   display: inline-block;
   margin-left: 8px;

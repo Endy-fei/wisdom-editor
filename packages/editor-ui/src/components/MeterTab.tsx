@@ -7,6 +7,7 @@ import {
   type WisdomTemplates,
 } from "@wisdom/core";
 import { DeferredInput } from "./DeferredInput";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 type Props = {
   data: WisdomRoot;
@@ -107,6 +108,7 @@ export function MeterTab({ data, templates, onChange }: Props) {
   const meters = data.MeterInfoList ?? [];
   const sortedMeters = useMemo(() => sortBySeat(meters), [meters]);
   const [selectedId, setSelectedId] = useState<string>("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
     if (!selectedId && sortedMeters[0]?.ID) {
@@ -177,10 +179,14 @@ export function MeterTab({ data, templates, onChange }: Props) {
     setSelectedId(id);
   };
 
-  const deleteMeter = () => {
+  const requestDeleteMeter = () => {
     if (!selected) return;
-    const label = selected.MeterNo || selected.MeterSeat || selected.ID;
-    if (!window.confirm(`确认删除电表「${label}」？相关证书与附加信息也会一并清理。`)) {
+    setConfirmDelete(true);
+  };
+
+  const deleteMeter = () => {
+    if (!selected) {
+      setConfirmDelete(false);
       return;
     }
     const id = selected.ID;
@@ -189,7 +195,8 @@ export function MeterTab({ data, templates, onChange }: Props) {
     const MeterOtherInfoMap = { ...data.MeterOtherInfoMap };
     delete MeterOtherInfoMap[id];
     const CertificateCode = { ...data.CertificateCode };
-    if (meterNo) delete CertificateCode[meterNo];
+    if (meterNo) delete CertificateCode[String(meterNo)];
+    setConfirmDelete(false);
     onChange({ ...data, MeterInfoList, MeterOtherInfoMap, CertificateCode });
   };
 
@@ -203,7 +210,7 @@ export function MeterTab({ data, templates, onChange }: Props) {
           <button
             type="button"
             className="btn danger"
-            onClick={deleteMeter}
+            onClick={requestDeleteMeter}
             disabled={!selected}
           >
             删除
@@ -301,6 +308,14 @@ export function MeterTab({ data, templates, onChange }: Props) {
           </>
         )}
       </section>
+
+      <ConfirmDialog
+        open={confirmDelete}
+        title="删除电表"
+        message={`确认删除电表「${selected?.MeterNo || selected?.MeterSeat || selected?.ID || ""}」？相关证书与附加信息也会一并清理。`}
+        onConfirm={deleteMeter}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </div>
   );
 }
