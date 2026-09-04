@@ -9,6 +9,8 @@ import { TestItemTab } from "./components/TestItemTab";
 import { ResultTab } from "./components/ResultTab";
 import { MetaTab } from "./components/MetaTab";
 import { JsonTab } from "./components/JsonTab";
+import { LoadingPane } from "./components/LoadingPane";
+import { afterNextPaint } from "./paint";
 
 const TABS = [
   "电表信息",
@@ -36,6 +38,9 @@ export function WisdomEditorApp({ bridge }: { bridge: HostBridge }) {
   const [recent, setRecent] = useState<RecentItem[]>([]);
   const [savedFlash, setSavedFlash] = useState(false);
   const [missingItem, setMissingItem] = useState<RecentItem | null>(null);
+  const [docGen, setDocGen] = useState(0);
+  const [tabPainted, setTabPainted] = useState(false);
+  const [jsonMounted, setJsonMounted] = useState(false);
 
   useEffect(() => syncHostThemeClass(), []);
 
@@ -54,6 +59,7 @@ export function WisdomEditorApp({ bridge }: { bridge: HostBridge }) {
         setDirty(false);
         setWelcome(false);
         setMissingItem(null);
+        setDocGen((n) => n + 1);
       } else if (msg.type === "welcome") {
         setWelcome(true);
         const list = Array.isArray(msg.recent) ? msg.recent : [];
@@ -74,6 +80,8 @@ export function WisdomEditorApp({ bridge }: { bridge: HostBridge }) {
           setMissingItem(null);
         }
         setWarnings([]);
+        setJsonMounted(false);
+        setTabPainted(false);
       } else if (msg.type === "warning" && typeof msg.text === "string") {
         setWarnings((prev) => [...prev, msg.text]);
       } else if (msg.type === "saved") {
@@ -99,6 +107,15 @@ export function WisdomEditorApp({ bridge }: { bridge: HostBridge }) {
     const t = window.setTimeout(() => setSavedFlash(false), 2000);
     return () => window.clearTimeout(t);
   }, [savedFlash]);
+
+  useEffect(() => {
+    if (welcome) return;
+    setTabPainted(false);
+    return afterNextPaint(() => {
+      if (tab === "原始 JSON") setJsonMounted(true);
+      setTabPainted(true);
+    });
+  }, [tab, docGen, welcome]);
 
   const commit = useCallback(
     (next: WisdomRoot) => {
@@ -226,7 +243,7 @@ export function WisdomEditorApp({ bridge }: { bridge: HostBridge }) {
   }
 
   if (!data || !templates) {
-    return <div className="page loading-page">加载中</div>;
+    return <LoadingPane />;
   }
 
   return (
@@ -250,39 +267,45 @@ export function WisdomEditorApp({ bridge }: { bridge: HostBridge }) {
             key={t}
             type="button"
             className={t === tab ? "tab active" : "tab"}
-            onClick={() => setTab(t)}
+            onClick={() => {
+              setTabPainted(false);
+              setTab(t);
+            }}
           >
             {t}
           </button>
         ))}
       </nav>
-      <main className="main">
-        {tab === "电表信息" && (
+      <main className="main" aria-busy={!tabPainted}>
+        {!tabPainted && <LoadingPane variant="fill" label="正在渲染…" />}
+        {tabPainted && tab === "电表信息" && (
           <div className="tab-panel">
             <MeterTab data={data} templates={templates} onChange={commit} />
           </div>
         )}
-        {tab === "检定方案" && (
+        {tabPainted && tab === "检定方案" && (
           <div className="tab-panel">
             <SchemeTab data={data} templates={templates} onChange={commit} />
           </div>
         )}
-        {tab === "测试项目" && (
+        {tabPainted && tab === "测试项目" && (
           <div className="tab-panel">
             <TestItemTab data={data} templates={templates} onChange={commit} />
           </div>
         )}
-        {tab === "结果明细" && (
+        {tabPainted && tab === "结果明细" && (
           <div className="tab-panel">
             <ResultTab data={data} templates={templates} onChange={commit} />
           </div>
         )}
-        {tab === "证书/人员" && (
+        {tabPainted && tab === "证书/人员" && (
           <div className="tab-panel">
             <MetaTab data={data} onChange={commit} />
           </div>
         )}
-        <JsonTab data={data} onApply={commit} active={tab === "原始 JSON"} />
+        {jsonMounted && (
+          <JsonTab data={data} onApply={commit} active={tabPainted && tab === "原始 JSON"} />
+        )}
       </main>
     </div>
   );
