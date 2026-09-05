@@ -30,10 +30,13 @@ type Props = {
   emptyText?: string;
   /** 表格区域占满父容器剩余高度，随窗口自适应 */
   fillHeight?: boolean;
+  /** 行操作：查看/编辑该行 JSON */
+  onEditJson?: (row: JsonObject, index: number) => void;
 };
 
 const MIN_COL_WIDTH = 56;
 const CHECK_COL_WIDTH = 40;
+const ACTION_COL_WIDTH = 72;
 const DEFAULT_AUTO_MAX = 420;
 const AUTO_SAMPLE_ROWS = 300;
 const CELL_PAD = 28;
@@ -117,9 +120,14 @@ function parseCell(raw: string, previous: unknown, kind?: Column["kind"]): unkno
   return raw;
 }
 
-function sumWidths(columns: Column[], widths: Record<string, number>): number {
+function sumWidths(
+  columns: Column[],
+  widths: Record<string, number>,
+  extra = 0
+): number {
   return (
     CHECK_COL_WIDTH +
+    extra +
     columns.reduce((sum, col) => sum + (widths[col.key] ?? 120), 0)
   );
 }
@@ -131,6 +139,7 @@ export function DataTable({
   createRow,
   emptyText = "暂无数据",
   fillHeight = false,
+  onEditJson,
 }: Props) {
   const [localRows, setLocalRows] = useState(rows);
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -188,12 +197,16 @@ export function DataTable({
       if (el) el.style.width = `${width}px`;
       if (tableRef.current) {
         const next = { ...widthsRef.current, [key]: width };
-        const total = sumWidths(columns, next);
+        const total = sumWidths(
+          columns,
+          next,
+          onEditJson ? ACTION_COL_WIDTH : 0
+        );
         tableRef.current.style.minWidth = `${total}px`;
         tableRef.current.style.width = "100%";
       }
     },
-    [columns]
+    [columns, onEditJson]
   );
 
   const onPointerMove = useCallback(
@@ -301,7 +314,9 @@ export function DataTable({
     onChange(next);
   };
 
-  const tableWidth = sumWidths(columns, widths);
+  const actionExtra = onEditJson ? ACTION_COL_WIDTH : 0;
+  const tableWidth = sumWidths(columns, widths, actionExtra);
+  const colCount = columns.length + 1 + (onEditJson ? 1 : 0);
 
   return (
     <div className={fillHeight ? "datatable datatable-fill" : "datatable"}>
@@ -325,6 +340,7 @@ export function DataTable({
         <table ref={tableRef} style={{ width: "100%", minWidth: tableWidth }}>
           <colgroup>
             <col style={{ width: CHECK_COL_WIDTH }} />
+            {onEditJson && <col style={{ width: ACTION_COL_WIDTH }} />}
             {columns.map((col) => (
               <col
                 key={col.key}
@@ -343,6 +359,7 @@ export function DataTable({
                   aria-label="全选"
                 />
               </th>
+              {onEditJson && <th className="col-action">JSON</th>}
               {columns.map((col) => (
                 <th key={col.key}>
                   <span className="th-label">{col.label}</span>
@@ -361,7 +378,7 @@ export function DataTable({
           <tbody>
             {localRows.length === 0 && (
               <tr>
-                <td colSpan={columns.length + 1} className="empty">
+                <td colSpan={colCount} className="empty">
                   {emptyText}
                 </td>
               </tr>
@@ -379,6 +396,17 @@ export function DataTable({
                     aria-label={`选择第 ${rowIndex + 1} 行`}
                   />
                 </td>
+                {onEditJson && (
+                  <td className="col-action">
+                    <button
+                      type="button"
+                      className="btn small"
+                      onClick={() => onEditJson(row, rowIndex)}
+                    >
+                      编辑
+                    </button>
+                  </td>
+                )}
                 {columns.map((col) => (
                   <td key={col.key}>
                     {col.kind === "yesNo" ? (

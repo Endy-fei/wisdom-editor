@@ -2,6 +2,13 @@ import { useMemo, useState } from "react";
 import type { JsonObject, WisdomRoot, WisdomTemplates } from "@wisdom/core";
 import { cloneWithNewId } from "../clone";
 import { DataTable, type Column } from "./DataTable";
+import { RowJsonDialog } from "./RowJsonDialog";
+import {
+  locateResultRow,
+  replaceResultRow,
+  resultJsonPointer,
+  type ResultRowLocator,
+} from "../resultLocator";
 
 type Props = {
   data: WisdomRoot;
@@ -84,6 +91,10 @@ function sortResultRows(rows: JsonObject[]): JsonObject[] {
 export function ResultTab({ data, templates, onChange }: Props) {
   const [itemCode, setItemCode] = useState("");
   const [meterSeat, setMeterSeat] = useState("");
+  const [editing, setEditing] = useState<{
+    loc: ResultRowLocator;
+    row: JsonObject;
+  } | null>(null);
   const rows = (data.ResultDetailList ?? []) as JsonObject[];
   const filtered = Boolean(itemCode || meterSeat);
 
@@ -134,6 +145,20 @@ export function ResultTab({ data, templates, onChange }: Props) {
     onChange({ ...data, ResultDetailList: merged });
   };
 
+  const openRowJson = (row: JsonObject) => {
+    const loc = locateResultRow(rows, row);
+    if (!loc) return;
+    setEditing({ loc, row });
+  };
+
+  const saveRowJson = (next: JsonObject) => {
+    if (!editing) return;
+    const replaced = replaceResultRow(rows, editing.loc, next);
+    if (!replaced) return;
+    onChange({ ...data, ResultDetailList: replaced });
+    setEditing(null);
+  };
+
   return (
     <div className="stack stack-fill">
       <div className="toolbar">
@@ -170,6 +195,20 @@ export function ResultTab({ data, templates, onChange }: Props) {
         onChange={handleChange}
         createRow={() => cloneWithNewId(templates.result)}
         fillHeight
+        onEditJson={openRowJson}
+      />
+      <RowJsonDialog
+        open={Boolean(editing)}
+        pointerLabel={
+          editing
+            ? `${resultJsonPointer(editing.loc)}${
+                editing.loc.id ? ` · ID ${editing.loc.id}` : ""
+              }`
+            : ""
+        }
+        value={editing?.row ?? null}
+        onSave={saveRowJson}
+        onClose={() => setEditing(null)}
       />
     </div>
   );
