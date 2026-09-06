@@ -2,9 +2,10 @@ import { invoke } from "@tauri-apps/api/core";
 import { ask } from "@tauri-apps/plugin-dialog";
 import {
   ensureWisdomShape,
+  assertNewMergePath,
   type WisdomRoot,
 } from "@wisdom/core";
-import type { HostBridge, HostMessage, RecentItem } from "@wisdom/editor-ui";
+import type { HostBridge, HostMessage, MergeFilePayload, RecentItem } from "@wisdom/editor-ui";
 import { buildTemplates } from "./templates";
 
 export type OpenResult = {
@@ -26,6 +27,7 @@ export class TauriHost {
   private dirty = false;
   private started = false;
   private pathListeners = new Set<() => void>();
+  private merging = false;
 
   get path(): string | null {
     return this.currentPath;
@@ -37,6 +39,10 @@ export class TauriHost {
 
   get hasDocument(): boolean {
     return this.currentData !== null;
+  }
+
+  get isMerging(): boolean {
+    return this.merging;
   }
 
   onPathChange(listener: () => void): () => void {
@@ -79,6 +85,35 @@ export class TauriHost {
       },
       restoreRecent: (path) => {
         void this.restoreRecent(path);
+      },
+      openMerge: () => {
+        if (!this.currentData || !this.currentPath) return;
+        this.merging = true;
+        const fileName = this.currentPath.split(/[/\\]/).pop() ?? "file.wisdom";
+        this.emit({
+          type: "openMerge",
+          files: [
+            {
+              path: this.currentPath,
+              name: fileName,
+              data: this.currentData,
+            },
+          ],
+        });
+      },
+      pickWisdomFiles: () => this.pickWisdomFiles(),
+      loadWisdomFiles: (paths) => this.loadWisdomFiles(paths),
+      supportsMergeDrop: true,
+      saveMerged: (args) => this.saveMerged(args),
+      openMerged: (path) => {
+        this.merging = false;
+        void this.openPath(path);
+      },
+      closeMerge: () => {
+        this.merging = false;
+      },
+      setMergeSession: (active) => {
+        this.merging = active;
       },
     };
   }
@@ -194,6 +229,87 @@ export class TauriHost {
         type: "warning",
         text: `恢复失败：${e instanceof Error ? e.message : String(e)}`,
       });
+    }
+  }
+
+  async loadWisdomFiles(paths: string[]): Promise<MergeFilePayload[] | null> {
+    const wisdom = paths.filter((path) => path.toLowerCase().endsWith(".wisdom"));
+    if (wisdom.length === 0) return null;
+    const files: MergeFilePayload[] = [];
+    for (const path of wisdom) {
+      try {
+        const result = await invoke<OpenResult>("open_wisdom_path", { path });
+        files.push({
+          path: result.path,
+          name: result.fileName,
+          data: ensureWisdomShape(result.data),
+        });
+      } catch (e) {
+        this.emit({
+          type: "warning",
+          text: `读取失败：${e instanceof Error ? e.message : String(e)}`,
+        });
+      }
+    }
+    return files.length ? files : null;
+  }
+
+  async addDroppedMergeFiles(paths: string[]): Promise<void> {
+    const files = await this.loadWisdomFiles(paths);
+    if (files?.length) this.emit({ type: "mergeFilesAdded", files });
+  }
+
+  async pickWisdomFiles(): Promise<MergeFilePayload[] | null> {
+    try {
+      this.emit({ type: "mergeProgress", text: "请选择要合并进来的 .wisdom 文件…" });
+      const results = await invoke<OpenResult[]>("open_wisdom_dialog_many");
+      if (!results.length) return null;
+      const errors: string[] = [];
+      for (let i = 0; i < results.length; i++) {
+        const result = results[i];
+        this.emit({
+          type: "mergeProgress",
+          text: `正在解析（${i + 1}/${results.length}）${result.fileName}`,
+          current: i,
+          total: results.length,
+        });
+        try {
+          const file: MergeFilePayload = {
+            path: result.path,
+            name: result.fileName,
+            data: ensureWisdomShape(result.data),
+          };
+          this.emit({ type: "mergeFilesAdded", files: [file] });
+        } catch (e) {
+          errors.push(
+            `「${result.fileName}」解析失败：${e instanceof Error ? e.message : String(e)}`
+          );
+        }
+      }
+      if (errors.length) throw new Error(errors.join("；"));
+      return [];
+    } catch (e) {
+      throw new Error(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  async saveMerged(args: {
+    data: WisdomRoot;
+    defaultName: string;
+    sourcePaths: string[];
+  }): Promise<{ path: string; name: string } | null> {
+    try {
+      const path = await invoke<string | null>("save_merged_wisdom", {
+        data: args.data,
+        defaultName: args.defaultName,
+        blockedPaths: args.sourcePaths,
+      });
+      if (!path) return null;
+      assertNewMergePath(path, args.sourcePaths);
+      const name = path.split(/[/\\]/).pop() ?? args.defaultName;
+      return { path, name };
+    } catch (e) {
+      throw new Error(e instanceof Error ? e.message : String(e));
     }
   }
 

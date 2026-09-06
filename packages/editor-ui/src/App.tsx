@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { WisdomRoot, WisdomTemplates } from "@wisdom/core";
-import type { HostBridge, RecentItem } from "./bridge";
+import { MergeWizard } from "./components/MergeWizard";
+import type { HostBridge, MergeFilePayload, RecentItem } from "./bridge";
 import { isDarkTheme, observeHostTheme, syncHostThemeClass } from "./theme";
 import { applyUiStyle } from "./uiStyles";
 import { MeterTab } from "./components/MeterTab";
@@ -32,12 +33,15 @@ export function WisdomEditorApp({ bridge }: { bridge: HostBridge }) {
   const [data, setData] = useState<WisdomRoot | null>(null);
   const [templates, setTemplates] = useState<WisdomTemplates | null>(null);
   const [fileName, setFileName] = useState("");
+  const [filePath, setFilePath] = useState("");
   const [dirty, setDirty] = useState(false);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [welcome, setWelcome] = useState(false);
   const [recent, setRecent] = useState<RecentItem[]>([]);
   const [savedFlash, setSavedFlash] = useState(false);
   const [missingItem, setMissingItem] = useState<RecentItem | null>(null);
+  const [mergeOpen, setMergeOpen] = useState(false);
+  const [mergeFiles, setMergeFiles] = useState<MergeFilePayload[] | undefined>(undefined);
   const [docGen, setDocGen] = useState(0);
   const [tabPainted, setTabPainted] = useState(false);
   const [jsonMounted, setJsonMounted] = useState(false);
@@ -54,6 +58,7 @@ export function WisdomEditorApp({ bridge }: { bridge: HostBridge }) {
       if (msg.type === "init") {
         setData(msg.data);
         setFileName(msg.fileName ?? "");
+        setFilePath(msg.filePath ?? "");
         if (msg.templates) setTemplates(msg.templates);
         setWarnings(Array.isArray(msg.warnings) ? msg.warnings : []);
         setDirty(false);
@@ -66,6 +71,8 @@ export function WisdomEditorApp({ bridge }: { bridge: HostBridge }) {
         setRecent(list);
         setData(null);
         setTemplates(null);
+        setFileName("");
+        setFilePath("");
         setDirty(false);
         if (msg.missingPath) {
           const found = list.find((item) => item.path === msg.missingPath);
@@ -82,6 +89,9 @@ export function WisdomEditorApp({ bridge }: { bridge: HostBridge }) {
         setWarnings([]);
         setJsonMounted(false);
         setTabPainted(false);
+      } else if (msg.type === "openMerge") {
+        setMergeFiles(msg.files);
+        setMergeOpen(true);
       } else if (msg.type === "warning" && typeof msg.text === "string") {
         setWarnings((prev) => [...prev, msg.text]);
       } else if (msg.type === "saved") {
@@ -126,6 +136,41 @@ export function WisdomEditorApp({ bridge }: { bridge: HostBridge }) {
     [bridge]
   );
 
+  const startMerge = useCallback(() => {
+    if (!data) return;
+    bridge.setMergeSession?.(true, filePath);
+    setMergeFiles([
+      {
+        path: filePath,
+        name: fileName || "file.wisdom",
+        data,
+      },
+    ]);
+    setMergeOpen(true);
+  }, [bridge, data, fileName, filePath]);
+
+  useEffect(() => {
+    if (!mergeOpen) return;
+    bridge.setMergeSession?.(true, filePath);
+    return () => {
+      bridge.setMergeSession?.(false);
+      bridge.closeMerge?.();
+    };
+  }, [bridge, mergeOpen, filePath]);
+
+  const mergeOverlay = mergeOpen ? (
+    <MergeWizard
+      key="merge-wizard"
+      bridge={bridge}
+      initialFiles={mergeFiles}
+      lockedBase
+      onClose={() => {
+        setMergeOpen(false);
+        setMergeFiles(undefined);
+      }}
+    />
+  ) : null;
+
   if (welcome) {
     return (
       <div className="page welcome-page">
@@ -141,11 +186,13 @@ export function WisdomEditorApp({ bridge }: { bridge: HostBridge }) {
               ))}
             </div>
           )}
-          {bridge.openFile && (
-            <button type="button" className="btn primary" onClick={() => bridge.openFile?.()}>
-              打开文件…
-            </button>
-          )}
+          <div className="welcome-actions">
+            {bridge.openFile && (
+              <button type="button" className="btn primary" onClick={() => bridge.openFile?.()}>
+                打开文件…
+              </button>
+            )}
+          </div>
           {recent.length > 0 && (
             <div className="welcome-recent">
               <h2 className="section-title">最近打开</h2>
@@ -238,12 +285,18 @@ export function WisdomEditorApp({ bridge }: { bridge: HostBridge }) {
             </div>
           </div>
         )}
+        {mergeOverlay}
       </div>
     );
   }
 
   if (!data || !templates) {
-    return <LoadingPane />;
+    return (
+      <>
+        <LoadingPane />
+        {mergeOverlay}
+      </>
+    );
   }
 
   return (
@@ -253,6 +306,9 @@ export function WisdomEditorApp({ bridge }: { bridge: HostBridge }) {
         <span className="title">{fileName || "未命名.wisdom"}</span>
         {dirty && <span className="dirty-badge">已修改</span>}
         {savedFlash && <span className="saved-badge">已保存</span>}
+        <button type="button" className="btn small top-merge-btn" onClick={startMerge}>
+          合并…
+        </button>
       </header>
       {warnings.length > 0 && (
         <div className="warning-banner" role="alert">
@@ -307,6 +363,7 @@ export function WisdomEditorApp({ bridge }: { bridge: HostBridge }) {
           <JsonTab data={data} onApply={commit} active={tabPainted && tab === "原始 JSON"} />
         )}
       </main>
+      {mergeOverlay}
     </div>
   );
 }

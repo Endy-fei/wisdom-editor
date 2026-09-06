@@ -18,6 +18,10 @@ export function App() {
       void host.openFile();
     }).then((u) => unlisteners.push(u));
 
+    void listen("menu-merge", () => {
+      bridge.openMerge?.();
+    }).then((u) => unlisteners.push(u));
+
     void listen("menu-save", () => {
       void host.save();
     }).then((u) => unlisteners.push(u));
@@ -29,10 +33,15 @@ export function App() {
     void getCurrentWebview()
       .onDragDropEvent((event) => {
         if (event.payload.type !== "drop") return;
-        const wisdom = event.payload.paths.find((p) =>
+        const wisdom = event.payload.paths.filter((p) =>
           p.toLowerCase().endsWith(".wisdom")
         );
-        if (wisdom) void host.openPath(wisdom);
+        if (wisdom.length === 0) return;
+        if (host.isMerging) {
+          void host.addDroppedMergeFiles(wisdom);
+          return;
+        }
+        void host.openPath(wisdom[0]);
       })
       .then((u) => unlisteners.push(u));
 
@@ -48,7 +57,7 @@ export function App() {
     return () => {
       for (const u of unlisteners) u();
     };
-  }, [host]);
+  }, [host, bridge]);
 
   const pathLabel = host.path
     ? host.path.split(/[/\\]/).pop() ?? host.path
@@ -59,6 +68,14 @@ export function App() {
       <div className="desktop-toolbar">
         <button type="button" className="btn" onClick={() => void host.openFile()}>
           打开
+        </button>
+        <button
+          type="button"
+          className="btn"
+          disabled={!host.hasDocument}
+          onClick={() => bridge.openMerge?.()}
+        >
+          合并
         </button>
         <button
           type="button"

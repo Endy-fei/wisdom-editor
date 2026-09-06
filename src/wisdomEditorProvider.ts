@@ -9,7 +9,9 @@ import {
   type WisdomTemplates,
 } from "@wisdom/core";
 import { WisdomDocument } from "./wisdomDocument";
-import type { HostToWebview, WebviewToHost } from "./messages";
+import { buildWisdomWebviewHtml } from "./webviewHtml";
+import { handleMergeWebviewMessage } from "./mergeIo";
+import type { HostToWebview, MergeFilePayload, WebviewToHost } from "./messages";
 
 function buildTemplates(): WisdomTemplates {
   const { meter, other } = createEmptyMeter(0);
@@ -31,6 +33,7 @@ export class WisdomEditorProvider implements vscode.CustomEditorProvider<WisdomD
 
   /** document URI → active webview panel */
   private readonly panels = new Map<string, vscode.WebviewPanel>();
+  private readonly documents = new Map<string, WisdomDocument>();
   /** development: force webview asset cache bust on reload */
   private webviewCacheBust = Date.now();
 
@@ -43,6 +46,7 @@ export class WisdomEditorProvider implements vscode.CustomEditorProvider<WisdomD
         webviewOptions: { retainContextWhenHidden: true },
         supportsMultipleEditorsPerDocument: false,
       }),
+      vscode.commands.registerCommand("wisdom.mergeFiles", () => provider.startMerge()),
     ];
 
     if (context.extensionMode === vscode.ExtensionMode.Development) {
@@ -107,6 +111,7 @@ export class WisdomEditorProvider implements vscode.CustomEditorProvider<WisdomD
 
     const docKey = document.uri.toString();
     this.panels.set(docKey, webviewPanel);
+    this.documents.set(docKey, document);
 
     const updateWebviewHtml = () => {
       webviewPanel.webview.html = this.getReactHtml(webviewPanel.webview);
@@ -117,7 +122,7 @@ export class WisdomEditorProvider implements vscode.CustomEditorProvider<WisdomD
       this._onDidChangeCustomDocument.fire({ document });
     });
 
-    webviewPanel.webview.onDidReceiveMessage((raw: WebviewToHost) => {
+    webviewPanel.webview.onDidReceiveMessage(async (raw: WebviewToHost) => {
       if (raw.type === "ready") {
         const msg: HostToWebview = {
           type: "init",
@@ -125,13 +130,16 @@ export class WisdomEditorProvider implements vscode.CustomEditorProvider<WisdomD
           fileName: document.uri.path.split("/").pop() ?? "file.wisdom",
           templates: buildTemplates(),
           warnings: [...document.warnings],
+          filePath: document.uri.fsPath,
         };
         void webviewPanel.webview.postMessage(msg);
         return;
       }
       if (raw.type === "edit") {
         document.replaceData(ensureWisdomShape(raw.data as WisdomRoot));
+        return;
       }
+      await handleMergeWebviewMessage(webviewPanel.webview, raw);
     });
 
     webviewPanel.onDidDispose(() => {
@@ -139,7 +147,40 @@ export class WisdomEditorProvider implements vscode.CustomEditorProvider<WisdomD
       if (this.panels.get(docKey) === webviewPanel) {
         this.panels.delete(docKey);
       }
+      if (this.documents.get(docKey) === document) {
+        this.documents.delete(docKey);
+      }
     });
+  }
+
+  startMerge(): void {
+    const key = this.activeDocumentKey();
+    const panel = key ? this.panels.get(key) : undefined;
+    const document = key ? this.documents.get(key) : undefined;
+    if (!panel || !document) {
+      void vscode.window.showInformationMessage(
+        "请先打开一份作为基准的 .wisdom 文件，再进行合并。"
+      );
+      return;
+    }
+    const files: MergeFilePayload[] = [
+      {
+        path: document.uri.fsPath,
+        name: document.uri.path.split("/").pop() ?? "file.wisdom",
+        data: document.data,
+      },
+    ];
+    const msg: HostToWebview = { type: "openMerge", files };
+    void panel.webview.postMessage(msg);
+  }
+
+  private activeDocumentKey(): string | undefined {
+    const tab = vscode.window.tabGroups.activeTabGroup.activeTab;
+    const input = tab?.input;
+    if (input instanceof vscode.TabInputCustom && input.viewType === "wisdom.editor") {
+      return input.uri.toString();
+    }
+    return this.panels.keys().next().value;
   }
 
   async saveCustomDocument(
@@ -181,6 +222,7 @@ export class WisdomEditorProvider implements vscode.CustomEditorProvider<WisdomD
         fileName: document.uri.path.split("/").pop() ?? "file.wisdom",
         templates: buildTemplates(),
         warnings: [...fresh.warnings],
+        filePath: document.uri.fsPath,
       };
       void panel.webview.postMessage(msg);
     }
@@ -205,35 +247,12 @@ export class WisdomEditorProvider implements vscode.CustomEditorProvider<WisdomD
   }
 
   private getReactHtml(webview: vscode.Webview): string {
-    const base = vscode.Uri.joinPath(this.context.extensionUri, "dist", "webview");
-    const bust =
+    return buildWisdomWebviewHtml(
+      webview,
+      this.context.extensionUri,
       this.context.extensionMode === vscode.ExtensionMode.Development
-        ? `t=${this.webviewCacheBust}`
-        : "";
-    const scriptUri = webview
-      .asWebviewUri(vscode.Uri.joinPath(base, "assets", "index.js"))
-      .with({ query: bust });
-    const styleUri = webview
-      .asWebviewUri(vscode.Uri.joinPath(base, "assets", "index.css"))
-      .with({ query: bust });
-    const csp = [
-      "default-src 'none'",
-      `img-src ${webview.cspSource} data:`,
-      `script-src ${webview.cspSource}`,
-      `style-src ${webview.cspSource} 'unsafe-inline'`,
-      `font-src ${webview.cspSource} data:`,
-    ].join("; ");
-    return `<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="${csp}" />
-  <link rel="stylesheet" href="${styleUri}" />
-</head>
-<body>
-  <div id="root"></div>
-  <script type="module" src="${scriptUri}"></script>
-</body>
-</html>`;
+        ? this.webviewCacheBust
+        : undefined
+    );
   }
 }

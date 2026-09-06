@@ -28,6 +28,7 @@ pub fn run() {
 
             let file_menu = SubmenuBuilder::new(app, "文件")
                 .text("menu-open", "打开…")
+                .text("menu-merge", "合并…")
                 .text("menu-save", "保存")
                 .text("menu-save-as", "另存为…")
                 .separator()
@@ -42,6 +43,7 @@ pub fn run() {
                 let id = event.id().0.as_str();
                 let event_name = match id {
                     "menu-open" => Some("menu-open"),
+                    "menu-merge" => Some("menu-merge"),
                     "menu-save" => Some("menu-save"),
                     "menu-save-as" => Some("menu-save-as"),
                     _ => None,
@@ -59,8 +61,10 @@ pub fn run() {
             commands::remove_recent,
             commands::open_wisdom_path,
             commands::open_wisdom_dialog,
+            commands::open_wisdom_dialog_many,
             commands::save_wisdom,
             commands::save_wisdom_as,
+            commands::save_merged_wisdom,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

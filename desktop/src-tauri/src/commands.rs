@@ -121,3 +121,59 @@ pub fn save_wisdom_as(app: AppHandle, data: Value) -> Result<Option<String>, Str
     let _ = recent::push_recent(&config_dir(&app)?, &path);
     Ok(Some(path.to_string_lossy().to_string()))
 }
+
+fn norm_path(path: &Path) -> String {
+    path.to_string_lossy()
+        .replace('\\', "/")
+        .trim_end_matches('/')
+        .to_lowercase()
+}
+
+#[tauri::command]
+pub fn open_wisdom_dialog_many(app: AppHandle) -> Result<Vec<OpenResult>, String> {
+    let picked = app
+        .dialog()
+        .file()
+        .add_filter("Wisdom", &["wisdom"])
+        .blocking_pick_files();
+    let Some(files) = picked else {
+        return Ok(Vec::new());
+    };
+    let mut out = Vec::new();
+    for file_path in files {
+        let path = file_path_to_pathbuf(file_path)?;
+        out.push(open_path_inner(&app, &path)?);
+    }
+    Ok(out)
+}
+
+#[tauri::command]
+pub fn save_merged_wisdom(
+    app: AppHandle,
+    data: Value,
+    default_name: String,
+    blocked_paths: Vec<String>,
+) -> Result<Option<String>, String> {
+    let picked = app
+        .dialog()
+        .file()
+        .add_filter("Wisdom", &["wisdom"])
+        .set_file_name(&default_name)
+        .blocking_save_file();
+    let Some(file_path) = picked else {
+        return Ok(None);
+    };
+    let mut path = file_path_to_pathbuf(file_path)?;
+    if path.extension().is_none() {
+        path.set_extension("wisdom");
+    }
+    let save_norm = norm_path(&path);
+    for blocked in blocked_paths {
+        if save_norm == norm_path(Path::new(&blocked)) {
+            return Err("不能覆盖参与合并的原文件，请另存为新文件".into());
+        }
+    }
+    wisdom_io::write_wisdom(&path, &data)?;
+    let _ = recent::push_recent(&config_dir(&app)?, &path);
+    Ok(Some(path.to_string_lossy().to_string()))
+}

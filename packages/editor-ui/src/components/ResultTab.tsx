@@ -47,7 +47,7 @@ function codeToInt(value: unknown): number {
   return Number.isNaN(n) ? Number.POSITIVE_INFINITY : n;
 }
 
-type ItemFilterOption = { code: string; label: string };
+type ItemFilterOption = { name: string; code: string; label: string };
 
 function uniqueSortedSeats(values: string[]): string[] {
   return [...new Set(values.filter(Boolean))].sort((a, b) => {
@@ -58,24 +58,65 @@ function uniqueSortedSeats(values: string[]): string[] {
   });
 }
 
-/** 按结论 Code 去重；下拉文案任取该 Code 下一条 ItemName */
-function uniqueItemsByCode(rows: JsonObject[]): ItemFilterOption[] {
-  const best = new Map<string, ItemFilterOption>();
-  for (const row of rows) {
-    const code = cellText(row.Code).trim();
-    if (!code || best.has(code)) continue;
-    best.set(code, { code, label: cellText(row.ItemName) || code });
+function stripItemSuffix(name: string): string {
+  return name.replace(/\s*\[\d+\]\s*$/, "").trim();
+}
+
+/** 结论行上的试验编号：名称尾号 [2607] > ItemCode 末四位 > Code */
+function itemNumberOf(row: JsonObject): string {
+  const named = cellText(row.ItemName).match(/\[(\d+)\]\s*$/);
+  if (named?.[1]) return named[1];
+  const itemCode = cellText(row.ItemCode).trim();
+  const last4 = itemCode.match(/(\d{4})$/);
+  if (last4?.[1]) return last4[1];
+  return cellText(row.Code).trim() || itemCode;
+}
+
+/** 与检定方案相同：下拉展示「编号 · 名称」，按编号数值排序 */
+function uniqueItemOptions(rows: JsonObject[], testItems: JsonObject[]): ItemFilterOption[] {
+  const bhByName = new Map<string, string>();
+  for (const item of testItems) {
+    const name = cellText(item.Name);
+    const bh = cellText(item.BH);
+    if (!name || !bh) continue;
+    const prev = bhByName.get(name);
+    if (prev === undefined || codeToInt(bh) < codeToInt(prev)) {
+      bhByName.set(name, bh);
+    }
   }
-  return [...best.values()].sort(
-    (a, b) =>
-      codeToInt(a.code) - codeToInt(b.code) ||
-      a.label.localeCompare(b.label, "zh")
-  );
+
+  const best = new Map<string, string>();
+  for (const row of rows) {
+    const raw = cellText(row.ItemName);
+    if (!raw) continue;
+    const name = stripItemSuffix(raw) || raw;
+    const code = bhByName.get(name) || bhByName.get(raw) || itemNumberOf(row);
+    const prev = best.get(name);
+    if (prev === undefined || codeToInt(code) < codeToInt(prev)) {
+      best.set(name, code);
+    }
+  }
+
+  return [...best.entries()]
+    .sort(
+      (a, b) =>
+        codeToInt(a[1]) - codeToInt(b[1]) || a[0].localeCompare(b[0], "zh")
+    )
+    .map(([name, code]) => ({
+      name,
+      code,
+      label: code ? `${code} · ${name}` : name,
+    }));
+}
+
+function rowMatchesItemName(row: JsonObject, itemName: string): boolean {
+  const raw = cellText(row.ItemName);
+  return raw === itemName || stripItemSuffix(raw) === itemName;
 }
 
 function sortResultRows(rows: JsonObject[]): JsonObject[] {
   return [...rows].sort((a, b) => {
-    const codeCmp = codeToInt(a.Code) - codeToInt(b.Code);
+    const codeCmp = codeToInt(itemNumberOf(a)) - codeToInt(itemNumberOf(b));
     if (codeCmp !== 0) return codeCmp;
     const seatA = Number(cellText(a.MeterSeat));
     const seatB = Number(cellText(b.MeterSeat));
@@ -89,16 +130,20 @@ function sortResultRows(rows: JsonObject[]): JsonObject[] {
 }
 
 export function ResultTab({ data, templates, onChange }: Props) {
-  const [itemCode, setItemCode] = useState("");
+  const [itemName, setItemName] = useState("");
   const [meterSeat, setMeterSeat] = useState("");
   const [editing, setEditing] = useState<{
     loc: ResultRowLocator;
     row: JsonObject;
   } | null>(null);
   const rows = (data.ResultDetailList ?? []) as JsonObject[];
-  const filtered = Boolean(itemCode || meterSeat);
+  const testItems = (data.TestItemList ?? []) as JsonObject[];
+  const filtered = Boolean(itemName || meterSeat);
 
-  const itemOptions = useMemo(() => uniqueItemsByCode(rows), [rows]);
+  const itemOptions = useMemo(
+    () => uniqueItemOptions(rows, testItems),
+    [rows, testItems]
+  );
   const seatOptions = useMemo(
     () => uniqueSortedSeats(rows.map((row) => cellText(row.MeterSeat))),
     [rows]
@@ -106,12 +151,12 @@ export function ResultTab({ data, templates, onChange }: Props) {
 
   const visibleRows = useMemo(() => {
     const filteredRows = rows.filter((row) => {
-      if (itemCode && cellText(row.Code).trim() !== itemCode) return false;
+      if (itemName && !rowMatchesItemName(row, itemName)) return false;
       if (meterSeat && cellText(row.MeterSeat) !== meterSeat) return false;
       return true;
     });
     return sortResultRows(filteredRows);
-  }, [rows, itemCode, meterSeat]);
+  }, [rows, itemName, meterSeat]);
 
 
   const handleChange = (nextVisible: JsonObject[]) => {
@@ -164,10 +209,14 @@ export function ResultTab({ data, templates, onChange }: Props) {
       <div className="toolbar">
         <label className="filter-field">
           <span>试验项目</span>
-          <select value={itemCode} onChange={(e) => setItemCode(e.target.value)}>
+          <select
+            className="item-filter-select"
+            value={itemName}
+            onChange={(e) => setItemName(e.target.value)}
+          >
             <option value="">全部</option>
             {itemOptions.map((opt) => (
-              <option key={opt.code} value={opt.code}>
+              <option key={opt.name} value={opt.name}>
                 {opt.label}
               </option>
             ))}
